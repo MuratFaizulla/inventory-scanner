@@ -43,13 +43,10 @@ export default function LoginScreen() {
   }
 
   return (
-    // Закрываем клавиатуру при тапе вне полей
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        // На iOS без offset — контент встаёт ровно над клавиатурой
-        // На Android 'height' сам сжимает доступное пространство
       >
         <View style={styles.inner}>
           <Text style={styles.icon}>📦</Text>
