@@ -1,50 +1,377 @@
-# Welcome to your Expo app 👋
+# НИШ Инвентаризация — Inventory Scanner
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Мобильное приложение для инвентаризации основных средств (ОС) в НИШ Туркестан. Написано на React Native + Expo.
 
-## Get started
+---
 
-1. Install dependencies
+## Содержание
 
-   ```bash
-   npm install
-   ```
+- [Возможности](#возможности)
+- [Стек технологий](#стек-технологий)
+- [Структура проекта](#структура-проекта)
+- [Установка и запуск](#установка-и-запуск)
+- [Конфигурация сервера](#конфигурация-сервера)
+- [API](#api)
+- [Сборка APK для Android](#сборка-apk-для-android)
+- [Установка APK на устройство](#установка-apk-на-устройство)
+- [Сборка для iOS](#сборка-для-ios)
+- [Частые проблемы](#частые-проблемы)
+- [Разработчик](#разработчик)
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## Возможности
 
-In the output, you'll find options to open the app in a
+### Три режима работы (вкладки)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+| Вкладка | Описание |
+|---|---|
+| **Инвентаризация** | Сканирование ОС в рамках акта инвентаризации |
+| **Сбор ОС** | Приём основных средств по сессиям сбора |
+| **Поиск ОС** | Быстрый поиск любого ОС по штрих-коду или инв. номеру |
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Сканер инвентаризации
+- Сканирование штрих-кодов через камеру
+- Ручной ввод инвентарного номера
+- Статусы результата: **Найден**, **Не на месте**, **Уже просканирован**, **Не найден**
+- Перемещение ОС: смена кабинета и/или ответственного прямо при сканировании
+- Быстрое повторное перемещение (применить предыдущее одной кнопкой)
+- Отмена сканирования (возврат ОС в статус «Не проверен»)
+- История сканирований за сессию (до 50 записей)
+- Статистика по локациям
+- Тактильная обратная связь (haptics)
 
-## Get a fresh project
+---
 
-When you're ready, run:
+## Стек технологий
 
-```bash
-npm run reset-project
+- **React Native 0.81** + **Expo 54**
+- **expo-router** — файловая маршрутизация
+- **expo-camera** — сканирование штрих-кодов
+- **axios** — HTTP-запросы к бэкенду
+- **AsyncStorage** — хранение имени пользователя и адреса сервера
+- **expo-haptics** — вибрация при сканировании
+- **react-native-reanimated** — анимации
+
+---
+
+## Структура проекта
+
+```
+app/
+  index.tsx                    # Экран входа (имя + IP сервера)
+  sessions.tsx                 # Главный экран с тремя вкладками
+  scan.tsx                     # Экран сканирования инвентаризации
+  session/[id].tsx             # Детали акта инвентаризации
+  collection/[id].tsx          # Сканер сбора ОС
+  collection/detail/[id].tsx   # Детали сессии сбора
+
+  components/
+    scan/          # Компоненты экрана сканирования
+    sessions/      # Компоненты вкладок (Inventory/Collection/Lookup)
+    session/       # Компоненты деталей акта
+    collection/    # Компоненты деталей сбора ОС
+
+constants/
+  api.ts           # Axios-клиент с динамическим хостом
+  colors.ts        # Палитра цветов приложения
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## Установка и запуск
 
-To learn more about developing your project with Expo, look at the following resources:
+### Требования
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+| Инструмент | Версия |
+|---|---|
+| Node.js | >= 18 |
+| JDK | 17 (для сборки Android) |
+| Android Studio | Ladybug или новее |
+| Expo CLI | `npm install -g expo-cli` |
 
-## Join the community
+### Установка зависимостей
 
-Join our community of developers creating universal apps.
+```bash
+npm install
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Запуск в режиме разработки
+
+```bash
+# Запуск dev-сервера Expo
+npm start
+
+# Запуск на Android (эмулятор или устройство по USB)
+npm run android
+
+# Запуск на iOS
+npm run ios
+```
+
+> Для запуска на физическом устройстве: включите **Режим разработчика** и **Отладку по USB** в настройках Android.
+
+---
+
+## Конфигурация сервера
+
+При первом запуске приложение показывает экран входа, где нужно указать:
+
+- **Имя** — будет записано в акт инвентаризации
+- **Адрес сервера** — IP и порт без `http://` и `/api`
+
+Пример: `10.216.209.118:8888`
+
+Данные сохраняются в AsyncStorage и восстанавливаются при следующем запуске. Изменить можно через кнопку **Выйти** → повторный вход с новыми данными.
+
+---
+
+## API
+
+Приложение работает с REST API бэкенда. Базовый URL формируется динамически: `http://<host>/api`.
+
+| Метод | Путь | Описание |
+|---|---|---|
+| `GET` | `/inventory` | Список актов инвентаризации |
+| `GET` | `/inventory/:id` | Детали акта |
+| `POST` | `/inventory/:id/scan` | Сканирование ОС |
+| `PATCH` | `/inventory/:id/asset/:assetId/location` | Перемещение ОС |
+| `PATCH` | `/inventory/:id/item/:itemId/cancel` | Отмена сканирования |
+| `GET` | `/collection` | Список сессий сбора ОС |
+| `GET` | `/assets/scan/:barcode` | Поиск ОС по штрих-коду/инв. номеру |
+| `GET` | `/locations` | Список кабинетов |
+| `GET` | `/locations/employees` | Список сотрудников |
+
+---
+
+## Сборка APK для Android
+
+> ⚠️ Папка `android` генерируется заново при каждом `prebuild`. После этого нужно вручную настроить HTTP-доступ к серверу — два способа ниже.
+
+### Шаг 1 — Сгенерировать папку android
+
+```bash
+npx expo prebuild --platform android
+```
+
+---
+
+### Шаг 2 — Разрешить HTTP-запросы к серверу
+
+Android 9+ по умолчанию блокирует HTTP. Есть два способа:
+
+#### Способ А — через AndroidManifest.xml (проще, рекомендуется)
+
+Открыть файл:
+
+```
+android\app\src\main\AndroidManifest.xml
+```
+
+Добавить `android:usesCleartextTraffic="true"` в тег `<application>`:
+
+```xml
+<application
+  android:usesCleartextTraffic="true"
+  android:label="@string/app_name"
+  ...
+>
+```
+
+✅ Делается один раз. Разрешает HTTP для любого IP — удобно для корпоративной сети.
+
+---
+
+#### Способ Б — через network_security_config.xml (для конкретного IP)
+
+1. Создать папку `xml`, если её нет:
+
+```
+android\app\src\main\res\xml\
+```
+
+2. Создать файл `network_security_config.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.1.100</domain>
+    </domain-config>
+</network-security-config>
+```
+
+Заменить `192.168.1.100` на реальный IP вашего сервера.
+
+3. Подключить файл в `AndroidManifest.xml`:
+
+```xml
+<application
+  android:networkSecurityConfig="@xml/network_security_config"
+  ...
+>
+```
+
+> ⚠️ Этот файл нужно создавать заново после каждого `npx expo prebuild` и обновлять IP если он изменился.
+
+---
+
+### Шаг 3 — Собрать APK
+
+```bash
+cd android
+gradlew assembleRelease
+```
+
+Готовый APK будет здесь:
+
+```
+android\app\build\outputs\apk\release\app-release.apk
+```
+
+---
+
+### Альтернатива — EAS Build (облако)
+
+Не требует Android Studio и JDK локально, сборка происходит на серверах Expo.
+
+```bash
+npx eas build --platform android --profile preview
+```
+
+EAS project ID: `aa96475a-305f-4c7a-9aab-1703c8d900a2`
+
+---
+
+## Установка APK на устройство
+
+После сборки готовый APK нужно передать на телефон и установить вручную.
+
+### Шаг 1 — Передать файл на телефон
+
+Выберите удобный способ:
+
+| Способ | Как |
+|---|---|
+| **USB** | Подключить телефон, открыть папку телефона в Проводнике, скопировать APK |
+| **Telegram** | Отправить APK себе в «Избранное» или в рабочий чат |
+| **Google Drive** | Загрузить на диск, открыть на телефоне через приложение Drive |
+| **Wi-Fi (локально)** | Открыть общий доступ к папке или использовать любой HTTP-сервер |
+
+### Шаг 2 — Разрешить установку из сторонних источников
+
+На Android по умолчанию запрещена установка APK не из Play Store.
+
+**Android 8 и выше:**
+1. Открыть скачанный APK через файловый менеджер
+2. Появится запрос — нажать **Настройки** → включить **Разрешить из этого источника**
+3. Вернуться назад и нажать **Установить**
+
+**Или заранее через настройки:**
+```
+Настройки → Приложения → Специальный доступ → Установка неизвестных приложений
+```
+Разрешить для вашего файлового менеджера или браузера.
+
+### Шаг 3 — Установить APK
+
+Открыть файл `app-release.apk` в файловом менеджере → **Установить** → **Открыть**.
+
+> ℹ️ При обновлении приложения просто установите новый APK поверх старого — данные (имя, IP сервера) сохранятся.
+
+---
+
+## Сборка для iOS
+
+> ⚠️ Для сборки iOS **обязательно нужен Mac** с установленным Xcode. На Windows собрать нативный iOS-билд невозможно. Единственный вариант без Mac — EAS Build (облачная сборка).
+
+### Вариант А — EAS Build (без Mac, рекомендуется)
+
+Сборка происходит на серверах Expo, результат — `.ipa` файл.
+
+```bash
+# Войти в аккаунт Expo
+npx eas login
+
+# Собрать для iOS
+npx eas build --platform ios --profile preview
+```
+
+После сборки Expo пришлёт ссылку на `.ipa`. Установить можно через:
+- **TestFlight** — официальный способ Apple для бета-тестирования
+- **Apple Configurator 2** — установка напрямую через Mac + USB
+
+> Требуется платный **Apple Developer Account** ($99/год) для подписи приложения.
+
+---
+
+### Вариант Б — Локальная сборка на Mac
+
+**Требования:**
+- macOS 13+
+- Xcode 15+
+- Apple Developer Account
+
+**Шаги:**
+
+1. Сгенерировать папку `ios`:
+
+```bash
+npx expo prebuild --platform ios
+```
+
+2. Открыть проект в Xcode:
+
+```bash
+open ios/inventory-scanner.xcworkspace
+```
+
+3. В Xcode:
+   - Выбрать **Product → Archive**
+   - После архивации откроется Organizer
+   - Нажать **Distribute App** → выбрать метод распространения
+
+4. Для установки на конкретный iPhone без App Store — использовать **Ad Hoc** распространение (нужно добавить UDID устройства в Developer Portal).
+
+---
+
+### Запуск на симуляторе iOS (только Mac)
+
+```bash
+npm run ios
+```
+
+Откроет симулятор iPhone автоматически.
+
+---
+
+## Частые проблемы
+
+### Приложение не подключается к серверу
+
+- Убедитесь, что телефон и сервер в одной Wi-Fi сети
+- Проверьте правильность IP и порта на экране входа
+- Если используется HTTP — убедитесь, что настроен `usesCleartextTraffic` (см. Шаг 2)
+- Проверьте, что сервер запущен и доступен: откройте `http://<IP>:<PORT>/api` в браузере телефона
+
+### Камера не открывается
+
+- Зайдите в **Настройки → Приложения → Инвентаризация → Разрешения** и разрешите доступ к камере
+- Или нажмите кнопку **Разрешить** на экране сканирования
+
+### `gradlew assembleRelease` падает с ошибкой
+
+- Убедитесь, что установлен JDK 17: `java -version`
+- Проверьте переменную окружения `JAVA_HOME`
+- Попробуйте очистить сборку: `cd android && gradlew clean`, затем повторить
+
+### После `prebuild` пропала настройка HTTP
+
+- Это ожидаемо — `prebuild` перегенерирует `android/` с нуля
+- Повторите Шаг 2 после каждого `prebuild`
+
+---
+
+## Разработчик
+
+**MuratFaizulla** — НИШ Туркестан
