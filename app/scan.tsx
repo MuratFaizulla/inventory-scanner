@@ -11,6 +11,7 @@ import {
   useWindowDimensions, View,
 } from 'react-native'
 import { confirmDialog, notify } from '../constants/dialog'
+import { goBack } from '../constants/nav'
 import {
   getEmployeeOptions, getLocationOptions,
   scanCode, toUiItem, unscanItem, updateItem,
@@ -324,7 +325,7 @@ export default function ScanScreen() {
         scannerName={scannerName}
         scannedCount={scannedCount}
         historyCount={history.length}
-        onBack={() => router.back()}
+        onBack={() => goBack(router)}
         onHistory={() => setShowHistory(true)}
         onStats={() => setShowStatsByLocation(true)}
       />

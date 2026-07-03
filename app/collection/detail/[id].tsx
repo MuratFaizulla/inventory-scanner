@@ -9,6 +9,7 @@ import {
   UIManager, View,
 } from 'react-native'
 import api from '../../../constants/api'
+import { goBack } from '../../../constants/nav'
 import { Colors } from '../../../constants/colors'
 
 // Включаем анимацию на Android
@@ -194,7 +195,7 @@ export default function CollectionDetailScreen() {
 
       {/* ── Шапка ─────────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack(router)} style={styles.backBtn}>
           <Text style={styles.backText}>← Назад</Text>
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>

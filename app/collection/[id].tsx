@@ -10,6 +10,7 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import api from '../../constants/api'
+import { goBack } from '../../constants/nav'
 import { Colors } from '../../constants/colors'
 import CameraScanner from '../../components/scan/CameraScanner'
 import CollectionHistoryScreen from '../../components/collection/CollectionHistoryScreen'
@@ -187,7 +188,7 @@ export default function CollectionScanScreen() {
   // ── Шапка (общая) ──
   const header = (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+      <TouchableOpacity onPress={() => goBack(router)} style={styles.backBtn}>
         <Text style={styles.backText}>←</Text>
       </TouchableOpacity>
       <View style={{ flex: 1 }}>

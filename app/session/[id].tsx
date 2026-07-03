@@ -4,6 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native'
 import { Colors } from '../../constants/colors'
+import { goBack } from '../../constants/nav'
 import { confirmDialog, notify } from '../../constants/dialog'
 import {
   getEmployeeOptions, getLocationOptions, getSessionDetail,
@@ -178,7 +179,7 @@ export default function SessionDetailScreen() {
 
       <SessionHeader
         session={session}
-        onBack={() => router.back()}
+        onBack={() => goBack(router)}
         onRefresh={() => load(true)}
       />
 

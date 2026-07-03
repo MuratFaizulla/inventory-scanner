@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { clearTokens, logout, setApiHost } from '../constants/api'
+import { goBack } from '../constants/nav'
 import { confirmDialog, notify } from '../constants/dialog'
 import { downloadFile } from '../constants/download'
 import { Colors } from '../constants/colors'
@@ -137,7 +138,7 @@ export default function SettingsScreen() {
     <View style={styles.container}>
       {/* Шапка */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+        <TouchableOpacity onPress={() => goBack(router)} style={styles.iconBtn}>
           <Feather name="arrow-left" size={19} color={Colors.text1} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Настройки</Text>
