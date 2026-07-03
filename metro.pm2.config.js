@@ -17,9 +17,13 @@ module.exports = {
       cwd: 'C:/inetpub/wwwroot/inventory-scanner',
       // expo CLI — обычный node-скрипт: pm2 запускает его сам, без cmd/npx.
       // --offline: не ходить в сервера Expo (авторизация, проверки) —
-      // без него в неинтерактивном режиме падает «Input is required»
+      // без него в неинтерактивном режиме падает «Input is required».
+      // ВАЖНО: --host lan вместе с --offline нельзя (expo >=54.0.35:
+      // «Specify at most one of: --offline, --host, --tunnel, --lan,
+      // --localhost»); lan — режим по умолчанию, а адрес для телефонов
+      // задаёт REACT_NATIVE_PACKAGER_HOSTNAME ниже
       script: './node_modules/expo/bin/cli',
-      args: 'start --host lan --port 8081 --offline',
+      args: 'start --port 8081 --offline',
       env: {
         // Адрес, который Metro отдаёт телефонам (иначе подставит внутренний IP)
         REACT_NATIVE_PACKAGER_HOSTNAME: '10.35.14.13',
