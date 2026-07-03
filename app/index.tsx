@@ -90,8 +90,8 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.icon}>📦</Text>
-          <Text style={styles.title}>НИШ Инвентаризация</Text>
-          <Text style={styles.subtitle}>Туркестан</Text>
+          <Text style={styles.title}>1С Интеграция</Text>
+          <Text style={styles.subtitle}>НИШ Туркестан</Text>
 
           <View style={styles.card}>
             {/* IP */}
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   icon:     { fontSize: 56, textAlign: 'center', marginBottom: 12 },
-  title:    { fontSize: 24, fontWeight: '700', color: Colors.text1, textAlign: 'center', marginBottom: 4 },
+  title:    { fontSize: 24, fontWeight: '800', color: Colors.text1, textAlign: 'center', marginBottom: 4, letterSpacing: -0.4 },
   subtitle: { fontSize: 14, color: Colors.text3, textAlign: 'center', marginBottom: 40 },
   card: {
     backgroundColor: Colors.bg2, borderRadius: 16,

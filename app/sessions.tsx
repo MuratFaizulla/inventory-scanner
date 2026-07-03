@@ -82,7 +82,7 @@ export default function SessionsScreen() {
           </View>
           <View style={{ flex: 1, marginHorizontal: 11 }}>
             <Text style={styles.userName} numberOfLines={1}>
-              {scannerName || 'НИШ Инвентаризация'}
+              {scannerName || '1С Интеграция'}
             </Text>
             <View style={styles.subRow}>
               {!!role && <View style={styles.roleDot} />}

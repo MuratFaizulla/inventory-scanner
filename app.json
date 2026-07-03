@@ -1,40 +1,35 @@
 {
   "expo": {
-    "name": "Инвентаризация",
+    "name": "НИШ 1С",
     "slug": "inventory-scanner",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/lOGO_ZHAPIRAK.png",
+    "icon": "./assets/images/icon-zhapirak.png",
     "scheme": "inventoryscanner",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "package": "com.muratfaizulla.inventoryscanner",
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/lOGO_ZHAPIRAK.png",
+        "foregroundImage": "./assets/images/icon-zhapirak-adaptive.png",
         "backgroundColor": "#0f172a"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
-
     "web": {
       "output": "static",
-      "favicon": "./assets/images/lOGO_ZHAPIRAK.png"
+      "favicon": "./assets/images/icon-zhapirak.png"
     },
-
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/lOGO_ZHAPIRAK.png",
+          "image": "./assets/images/splash-zhapirak.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#0f172a",
@@ -42,14 +37,20 @@
             "backgroundColor": "#0f172a"
           }
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
-
     "extra": {
       "router": {},
       "eas": {
