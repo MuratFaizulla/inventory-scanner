@@ -4,7 +4,7 @@ import {
   ActivityIndicator, RefreshControl, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native'
-import api from '../../../constants/api'
+import api from '../../constants/api'
 import {
   ChangesResponse, FIELD_LABELS, formatDate,
   SyncChange, SyncStatus, T,

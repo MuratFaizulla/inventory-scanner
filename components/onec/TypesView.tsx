@@ -5,8 +5,8 @@ import {
   ActivityIndicator, FlatList, Image, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
-import api from '../../../constants/api'
-import { confirmDialog, notify } from '../../../constants/dialog'
+import api from '../../constants/api'
+import { confirmDialog, notify } from '../../constants/dialog'
 import AssetDetailModal from './AssetDetailModal'
 import FilterSelect from './FilterSelect'
 import { assetMeta, AssetType, InvAsset, photoUri, TypeDetail } from './inventory'

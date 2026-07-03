@@ -6,12 +6,12 @@ import { useCallback, useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Colors } from '../constants/colors'
-import AssetsView from './components/onec/AssetsView'
-import MyAssetsView from './components/onec/MyAssetsView'
-import TypesView from './components/onec/TypesView'
-import InventoryTab from './components/sessions/InventoryTab'
-import LookupTab from './components/sessions/LookupTab'
-import type { Tab } from './components/sessions/types'
+import AssetsView from '../components/onec/AssetsView'
+import MyAssetsView from '../components/onec/MyAssetsView'
+import TypesView from '../components/onec/TypesView'
+import InventoryTab from '../components/sessions/InventoryTab'
+import LookupTab from '../components/sessions/LookupTab'
+import type { Tab } from '../components/sessions/types'
 
 // Разделы; «Синхронизация 1С» живёт в Настройках (шестерёнка)
 const TABS: {

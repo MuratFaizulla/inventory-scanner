@@ -5,8 +5,8 @@ import {
   Modal, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native'
-import { lookupAsset } from '../../../constants/sessionsApi'
-import { Colors } from '../../../constants/colors'
+import { lookupAsset } from '../../constants/sessionsApi'
+import { Colors } from '../../constants/colors'
 import CameraScanner from '../scan/CameraScanner'
 import LookupResultCard from './LookupResultCard'
 import type { LookupResult } from './types'

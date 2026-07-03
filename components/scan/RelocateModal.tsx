@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
-import { Colors } from '../../../constants/colors'
+import { Colors } from '../../constants/colors'
 import type { Employee, Location, ScannedAsset } from './types'
 
 export type LastRelocate = {

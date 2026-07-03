@@ -5,7 +5,7 @@ import * as Clipboard from 'expo-clipboard'
 import * as Haptics from 'expo-haptics'
 import { useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Colors } from '../../../constants/colors'
+import { Colors } from '../../constants/colors'
 import type { Item } from './types'
 
 interface Props {

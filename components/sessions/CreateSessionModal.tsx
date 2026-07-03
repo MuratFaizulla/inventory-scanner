@@ -1,14 +1,14 @@
 import { Feather } from '@expo/vector-icons'
 import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator, Modal, ScrollView, StyleSheet,
-  Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, KeyboardAvoidingView, Modal, Platform,
+  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import {
   createSession, getCreateOptions, previewSession, RawSession,
-} from '../../../constants/sessionsApi'
-import { Colors } from '../../../constants/colors'
-import { notify } from '../../../constants/dialog'
+} from '../../constants/sessionsApi'
+import { Colors } from '../../constants/colors'
+import { notify } from '../../constants/dialog'
 import FilterSelect from '../onec/FilterSelect'
 
 // Модалка создания акта — как SessionCreateModal.jsx в вебе:
@@ -94,9 +94,12 @@ export default function CreateSessionModal({ visible, scannerName, onClose, onCr
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.card}>
           <View style={styles.head}>
             <Text style={styles.title}>Новый акт инвентаризации</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -186,20 +189,22 @@ export default function CreateSessionModal({ visible, scannerName, onClose, onCr
                 {busy ? 'Создаю...' : 'Создать акт'}
               </Text>
             </TouchableOpacity>
-            <View style={{ height: 24 }} />
+            <View style={{ height: 8 }} />
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
 
 const styles = StyleSheet.create({
+  // Карточка по центру — как остальные модалки приложения
   overlay: {
-    flex: 1, backgroundColor: 'rgba(15,23,42,0.92)', justifyContent: 'flex-end',
+    flex: 1, backgroundColor: 'rgba(2,6,23,0.85)',
+    justifyContent: 'center', padding: 16,
   },
-  sheet: {
-    backgroundColor: Colors.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+  card: {
+    backgroundColor: Colors.bg, borderRadius: 20,
     borderWidth: 1, borderColor: Colors.border,
     maxHeight: '90%', padding: 20,
   },

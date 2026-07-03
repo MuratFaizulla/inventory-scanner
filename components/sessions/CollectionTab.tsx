@@ -1,8 +1,8 @@
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { Alert, FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native'
-import api from '../../../constants/api'
-import { Colors } from '../../../constants/colors'
+import api from '../../constants/api'
+import { Colors } from '../../constants/colors'
 import type { CollectionSession } from './types'
 import { sessionStyles as s } from './sessionStyles'
 

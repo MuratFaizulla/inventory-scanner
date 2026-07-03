@@ -1,7 +1,7 @@
 // components/scan/ScanResultCard.tsx
 
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Colors } from '../../../constants/colors'
+import { Colors } from '../../constants/colors'
 import { statusBg, statusColor, statusEmoji, statusLabel } from './scanHelpers'
 import type { ScanResult } from './types'
 

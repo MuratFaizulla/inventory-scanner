@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Colors } from '../../../constants/colors'
+import { Colors } from '../../constants/colors'
 import type { PendingContext, ScanResult, ScanStatus } from './types'
 import { STATUS_CFG } from './types'
 

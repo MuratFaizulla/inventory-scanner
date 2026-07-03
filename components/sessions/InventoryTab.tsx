@@ -5,11 +5,11 @@ import {
   FlatList, Modal, RefreshControl, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native'
-import { Colors } from '../../../constants/colors'
-import { confirmDialog, notify } from '../../../constants/dialog'
+import { Colors } from '../../constants/colors'
+import { confirmDialog, notify } from '../../constants/dialog'
 import {
   listSessions, RawSession, sessionAction,
-} from '../../../constants/sessionsApi'
+} from '../../constants/sessionsApi'
 import CreateSessionModal from './CreateSessionModal'
 import { sessionStyles as s } from './sessionStyles'
 

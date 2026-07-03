@@ -16,16 +16,16 @@ import {
   scanCode, toUiItem, unscanItem, updateItem,
 } from '../constants/sessionsApi'
 
-import CameraScanner from './components/scan/CameraScanner'
-import HistoryScreen from './components/scan/HistoryScreen'
-import ManualInput from './components/scan/ManualInput'
-import RelocateModal from './components/scan/RelocateModal'
-import ScanHeader from './components/scan/ScanHeader'
-import ScanResultCard from './components/scan/ScanResultCard'
-import StatsByLocationScreen from './components/scan/StatsByLocationScreen'
+import CameraScanner from '../components/scan/CameraScanner'
+import HistoryScreen from '../components/scan/HistoryScreen'
+import ManualInput from '../components/scan/ManualInput'
+import RelocateModal from '../components/scan/RelocateModal'
+import ScanHeader from '../components/scan/ScanHeader'
+import ScanResultCard from '../components/scan/ScanResultCard'
+import StatsByLocationScreen from '../components/scan/StatsByLocationScreen'
 
-import type { LastRelocate } from './components/scan/RelocateModal'
-import type { Employee, HistoryItem, Location, ScanResult, ScanStatus } from './components/scan/types'
+import type { LastRelocate } from '../components/scan/RelocateModal'
+import type { Employee, HistoryItem, Location, ScanResult, ScanStatus } from '../components/scan/types'
 
 let _seq = 0
 const uid = () => `${Date.now()}-${++_seq}`

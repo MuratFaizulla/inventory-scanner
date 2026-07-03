@@ -3,7 +3,7 @@
 import { Feather } from '@expo/vector-icons'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Colors } from '../../../constants/colors'
+import { Colors } from '../../constants/colors'
 import type { SessionDetail } from './types'
 
 interface Props {

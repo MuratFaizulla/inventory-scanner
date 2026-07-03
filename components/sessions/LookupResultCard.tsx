@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons'
 import { useState } from 'react'
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { getApiBase } from '../../../constants/api'
-import { Colors } from '../../../constants/colors'
+import { getApiBase } from '../../constants/api'
+import { Colors } from '../../constants/colors'
 import { photoUri } from '../onec/inventory'
 import type { LookupResult } from './types'
 

@@ -11,13 +11,13 @@ import {
 } from 'react-native'
 import api from '../../constants/api'
 import { Colors } from '../../constants/colors'
-import CameraScanner from '../components/scan/CameraScanner'
-import CollectionHistoryScreen from '../components/collection/CollectionHistoryScreen'
-import ResultScreen from '../components/collection/ResultScreen'
+import CameraScanner from '../../components/scan/CameraScanner'
+import CollectionHistoryScreen from '../../components/collection/CollectionHistoryScreen'
+import ResultScreen from '../../components/collection/ResultScreen'
 import type {
   HistoryEntry, PendingContext, ScanResult,
   ScanStatus, ScreenMode, SessionStats,
-} from '../components/collection/types'
+} from '../../components/collection/types'
 
 let _seq = 0
 const uid     = () => `${Date.now()}-${++_seq}`

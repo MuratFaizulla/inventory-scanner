@@ -10,8 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { getStatsByLocation } from '../../../constants/sessionsApi'
-import { Colors } from '../../../constants/colors'
+import { getStatsByLocation } from '../../constants/sessionsApi'
+import { Colors } from '../../constants/colors'
 
 // ── Типы ─────────────────────────────────────────────────────────────────────
 

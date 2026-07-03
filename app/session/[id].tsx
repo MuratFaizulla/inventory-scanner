@@ -10,12 +10,12 @@ import {
   unscanItem, updateItem,
 } from '../../constants/sessionsApi'
 
-import SessionHeader from './../components/session/SessionHeader'
-import SessionItemCard from './../components/session/SessionItemCard'
-import SessionRelocateModal from './../components/session/SessionRelocateModal'
-import SessionTabs from './../components/session/SessionTabs'
+import SessionHeader from '../../components/session/SessionHeader'
+import SessionItemCard from '../../components/session/SessionItemCard'
+import SessionRelocateModal from '../../components/session/SessionRelocateModal'
+import SessionTabs from '../../components/session/SessionTabs'
 
-import type { Employee, Item, Location, SessionDetail, TabType } from './../components/session/types'
+import type { Employee, Item, Location, SessionDetail, TabType } from '../../components/session/types'
 
 export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()

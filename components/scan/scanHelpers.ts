@@ -1,6 +1,6 @@
 // components/scan/scanHelpers.ts
 
-import { Colors } from '../../../constants/colors'
+import { Colors } from '../../constants/colors'
 import type { ScanStatus } from './types'
 
 export const statusColor = (s: ScanStatus) => {

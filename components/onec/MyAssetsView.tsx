@@ -4,7 +4,7 @@ import {
   ActivityIndicator, FlatList, Image, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native'
-import api from '../../../constants/api'
+import api from '../../constants/api'
 import AssetDetailModal from './AssetDetailModal'
 import { assetMeta, InvAsset, photoUri } from './inventory'
 import { AssetTable, T } from './types'

@@ -4,9 +4,9 @@ import {
   ActivityIndicator, FlatList, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native'
-import api from '../../../constants/api'
-import { notify } from '../../../constants/dialog'
-import { downloadFile } from '../../../constants/download'
+import api from '../../constants/api'
+import { notify } from '../../constants/dialog'
+import { downloadFile } from '../../constants/download'
 import AssetDetailModal from './AssetDetailModal'
 import FilterSelect from './FilterSelect'
 import { assetMeta, InvAsset } from './inventory'
@@ -68,7 +68,13 @@ export default function AssetsView() {
         },
       })
       if (id !== reqId.current) return
-      setItems(prev => (append ? [...prev, ...(res.data.data || [])] : (res.data.data || [])))
+      setItems(prev => {
+        const next: InvAsset[] = res.data.data || []
+        if (!append) return next
+        // Страницы могут пересекаться — не дублируем уже показанные записи
+        const seen = new Set(prev.map(i => i.id))
+        return [...prev, ...next.filter(i => !seen.has(i.id))]
+      })
       setTotal(res.data.total ?? 0)
       setPage(res.data.page ?? p)
       setPages(res.data.pages ?? 1)

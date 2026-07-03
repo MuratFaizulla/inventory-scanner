@@ -15,7 +15,7 @@ import { clearTokens, logout, setApiHost } from '../constants/api'
 import { confirmDialog, notify } from '../constants/dialog'
 import { downloadFile } from '../constants/download'
 import { Colors } from '../constants/colors'
-import SyncView from './components/onec/SyncView'
+import SyncView from '../components/onec/SyncView'
 
 const ROLE_LABELS: Record<string, string> = {
   admin:   'Администратор',

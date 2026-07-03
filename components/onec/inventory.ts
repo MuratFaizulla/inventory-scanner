@@ -1,5 +1,5 @@
 // Типы и хелперы модуля инвентаря — зеркалят backend/src/modules/inventory
-import { getHostBase } from '../../../constants/api'
+import { getHostBase } from '../../constants/api'
 
 // mapAsset() из inventory.service.ts
 export interface InvAsset {

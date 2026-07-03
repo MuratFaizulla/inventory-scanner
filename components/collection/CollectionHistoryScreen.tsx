@@ -1,5 +1,5 @@
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Colors } from '../../../constants/colors'
+import { Colors } from '../../constants/colors'
 import type { HistoryEntry, SessionStats } from './types'
 
 const STATUS_COLOR: Record<string, string> = {

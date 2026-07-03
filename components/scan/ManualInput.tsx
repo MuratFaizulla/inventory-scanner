@@ -1,7 +1,7 @@
 // components/scan/ManualInput.tsx
 
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { Colors } from '../../../constants/colors'
+import { Colors } from '../../constants/colors'
 
 interface Props {
   value:      string

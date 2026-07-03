@@ -1,7 +1,7 @@
 // components/scan/HistoryScreen.tsx
 
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { Colors } from '../../../constants/colors'
+import { Colors } from '../../constants/colors'
 import { statusColor, statusEmoji } from './scanHelpers'
 import type { HistoryItem } from './types'
 
