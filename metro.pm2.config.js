@@ -12,9 +12,11 @@ module.exports = {
   apps: [
     {
       name: 'nis-scanner',
-      // expo CLI — обычный node-скрипт: pm2 запускает его сам, без cmd/npx
+      // expo CLI — обычный node-скрипт: pm2 запускает его сам, без cmd/npx.
+      // --offline: не ходить в сервера Expo (авторизация, проверки) —
+      // без него в неинтерактивном режиме падает «Input is required»
       script: './node_modules/expo/bin/cli',
-      args: 'start --host lan --port 8081',
+      args: 'start --host lan --port 8081 --offline',
       env: {
         // Адрес, который Metro отдаёт телефонам (иначе подставит внутренний IP)
         REACT_NATIVE_PACKAGER_HOSTNAME: '10.35.14.13',
