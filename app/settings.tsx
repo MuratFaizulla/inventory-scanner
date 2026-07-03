@@ -7,7 +7,7 @@ import Constants from 'expo-constants'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
-  Modal, Platform, ScrollView, StyleSheet, Text,
+  Modal, Platform, ScrollView, Share, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -56,7 +56,10 @@ export default function SettingsScreen() {
         setName(v.scannerName)
         setRole(v.authRole)
         setRemembered(v.rememberMe === '1')
+        // Сразу показываем статус сервера, не дожидаясь нажатия кнопки
+        if (v.apiHost) pingHost(v.apiHost)
       })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const hostChanged = host.trim() !== origHost
@@ -79,9 +82,9 @@ export default function SettingsScreen() {
   }
 
   // Проверка связи: публичный эндпоинт, без авторизации — тестирует адрес из поля
-  const checkConnection = async () => {
-    const trimmed = host.trim()
-    if (!trimmed || pinging) return
+  const pingHost = async (target: string) => {
+    const trimmed = target.trim()
+    if (!trimmed) return
     setPinging(true)
     setPing(null)
     const start = Date.now()
@@ -93,6 +96,24 @@ export default function SettingsScreen() {
     } finally {
       setPinging(false)
     }
+  }
+  const checkConnection = () => { if (!pinging) pingHost(host) }
+
+  // Ссылка на страницу установки (/install бэкенда) — отправить коллеге
+  const shareInstall = async () => {
+    const url = `http://${(origHost || host).trim()}/install`
+    if (Platform.OS === 'web') {
+      try {
+        await navigator.clipboard.writeText(url)
+        notify('Ссылка скопирована', url)
+      } catch {
+        notify('Ссылка на установку', url)
+      }
+      return
+    }
+    try {
+      await Share.share({ message: `Установка приложения «НИШ 1С»: ${url}` })
+    } catch { /* пользователь закрыл шторку — не ошибка */ }
   }
 
   // Мой акт закрепления ОС: single — один Excel, zip — файл на каждый кабинет
@@ -275,6 +296,37 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </>
         )}
+
+        {/* Справка */}
+        <Text style={styles.sectionTitle}>Справка</Text>
+        <TouchableOpacity
+          style={[styles.navItem, { marginBottom: 8 }]}
+          onPress={() => router.push('/help')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.navIcon}>
+            <Feather name="book-open" size={17} color={Colors.accent} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.navLabel}>Как пользоваться</Text>
+            <Text style={styles.navSub}>Акты, сканер, поиск — по шагам</Text>
+          </View>
+          <Feather name="chevron-right" size={15} color={Colors.text3} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={shareInstall}
+          activeOpacity={0.7}
+        >
+          <View style={styles.navIcon}>
+            <Feather name="share-2" size={17} color={Colors.accent2} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.navLabel}>Поделиться приложением</Text>
+            <Text style={styles.navSub}>Отправить коллеге ссылку на установку</Text>
+          </View>
+          <Feather name="chevron-right" size={15} color={Colors.text3} />
+        </TouchableOpacity>
 
         {/* Безопасность */}
         {remembered && (
