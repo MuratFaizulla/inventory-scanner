@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import api from '../../../constants/api'
+import { getStatsByLocation } from '../../../constants/sessionsApi'
 import { Colors } from '../../../constants/colors'
 
 // ── Типы ─────────────────────────────────────────────────────────────────────
@@ -126,8 +126,7 @@ export default function StatsByLocationScreen({ sessionId, onBack }: Props) {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
     try {
-      const res = await api.get(`/inventory/${sessionId}/stats/by-location`)
-      setStats(res.data)
+      setStats(await getStatsByLocation(sessionId))
     } catch (e) {
       console.error(e)
     } finally {

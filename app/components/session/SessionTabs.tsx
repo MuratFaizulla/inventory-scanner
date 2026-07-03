@@ -11,10 +11,10 @@ interface Props {
 }
 
 const TABS: { key: TabType; label: string; color: string; countKey: keyof SessionDetail }[] = [
-  { key: 'FOUND',     label: '✅ Найден',      color: Colors.accent2, countKey: 'found'     },
-  { key: 'NOT_FOUND', label: '❌ Не найден',   color: Colors.danger,  countKey: 'notFound'  },
-  { key: 'MISPLACED', label: '⚠️ Место',       color: Colors.warn,    countKey: 'misplaced' },
-  { key: 'PENDING',   label: '⏳ Не проверен', color: Colors.text3,   countKey: 'pending'   },
+  { key: 'FOUND',     label: 'Найдено',     color: Colors.accent2, countKey: 'found'     },
+  { key: 'NOT_FOUND', label: 'Не найдено',  color: Colors.danger,  countKey: 'notFound'  },
+  { key: 'MISPLACED', label: 'Не на месте', color: Colors.warn,    countKey: 'misplaced' },
+  { key: 'PENDING',   label: 'Осталось',    color: Colors.text2,   countKey: 'pending'   },
 ]
 
 export default function SessionTabs({ session, activeTab, onChange }: Props) {
@@ -26,11 +26,16 @@ export default function SessionTabs({ session, activeTab, onChange }: Props) {
         return (
           <TouchableOpacity
             key={t.key}
-            style={[styles.tab, isActive && { borderBottomColor: t.color, borderBottomWidth: 2 }]}
+            style={[styles.tab, isActive && { borderBottomColor: t.color }]}
             onPress={() => onChange(t.key)}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.tabText,  { color: isActive ? t.color : Colors.text3 }]}>{t.label}</Text>
-            <Text style={[styles.tabCount, { color: isActive ? t.color : Colors.text3 }]}>{count}</Text>
+            <Text style={[styles.tabCount, { color: isActive ? t.color : Colors.text3 }]}>
+              {count}
+            </Text>
+            <Text style={[styles.tabText, { color: isActive ? t.color : Colors.text3 }]}>
+              {t.label}
+            </Text>
           </TouchableOpacity>
         )
       })}
@@ -45,9 +50,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   tab: {
-    flex: 1, alignItems: 'center', paddingVertical: 10,
+    flex: 1, alignItems: 'center', paddingVertical: 8,
     borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  tabText:  { fontSize: 9,  fontWeight: '600' },
-  tabCount: { fontSize: 16, fontWeight: '700', marginTop: 2 },
+  tabCount: { fontSize: 16, fontWeight: '700' },
+  tabText:  { fontSize: 9, fontWeight: '600', marginTop: 1 },
 })

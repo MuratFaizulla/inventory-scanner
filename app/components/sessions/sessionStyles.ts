@@ -32,6 +32,11 @@ export const sessionStyles = StyleSheet.create({
     padding: 10, alignItems: 'center',
     borderWidth: 1, borderColor: Colors.border,
   },
+  moreBtn: {
+    backgroundColor: Colors.bg3, borderRadius: 10,
+    padding: 10, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.border, minWidth: 42,
+  },
   detailBtnText: { fontSize: 13, color: Colors.text2, fontWeight: '600' },
   scanBtn: {
     flex: 1, backgroundColor: '#0c4a2a', borderRadius: 10,

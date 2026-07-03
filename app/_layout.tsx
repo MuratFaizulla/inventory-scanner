@@ -1,13 +1,15 @@
-import { Stack } from 'expo-router'
+import { Stack, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
 import { View } from 'react-native'
-import { getApiBase, initApiHost } from '../constants/api'
+import { getApiBase, initApiHost, onAuthExpired } from '../constants/api'
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
+    onAuthExpired(() => router.replace('/'))
     initApiHost()
       .then(() => {
         console.log('[API] host loaded:', getApiBase())
@@ -18,7 +20,7 @@ export default function RootLayout() {
         // Всё равно рендерим — иначе приложение зависнет
         setReady(true)
       })
-  }, [])
+  }, [router])
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: '#0f172a' }} />
 
@@ -33,7 +35,16 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: '#0f172a' },
           headerShadowVisible: false,
         }}
-      />
+      >
+        {/* У этих экранов свои шапки с кнопкой «назад» — нативная не нужна */}
+        <Stack.Screen name="index"        options={{ headerShown: false }} />
+        <Stack.Screen name="sessions"     options={{ headerShown: false }} />
+        <Stack.Screen name="settings"     options={{ headerShown: false }} />
+        <Stack.Screen name="scan"         options={{ headerShown: false }} />
+        <Stack.Screen name="session/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="collection/[id]"         options={{ title: 'Сбор ОС' }} />
+        <Stack.Screen name="collection/detail/[id]"  options={{ title: 'Сессия сбора' }} />
+      </Stack>
     </>
   )
 }

@@ -6,11 +6,15 @@ import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Alert, Keyboard, KeyboardAvoidingView,
+  Keyboard, KeyboardAvoidingView,
   Platform, StyleSheet, Text, TouchableOpacity,
   useWindowDimensions, View,
 } from 'react-native'
-import api from '../constants/api'
+import { confirmDialog, notify } from '../constants/dialog'
+import {
+  getEmployeeOptions, getLocationOptions,
+  scanCode, toUiItem, unscanItem, updateItem,
+} from '../constants/sessionsApi'
 
 import CameraScanner from './components/scan/CameraScanner'
 import HistoryScreen from './components/scan/HistoryScreen'
@@ -79,8 +83,8 @@ export default function ScanScreen() {
 
   useEffect(() => {
     AsyncStorage.getItem('scannerName').then(n => setScannerName(n || ''))
-    api.get('/locations').then(r => setLocations(r.data)).catch(() => {})
-    api.get('/locations/employees').then(r => setEmployees(r.data)).catch(() => {})
+    getLocationOptions().then(setLocations).catch(() => {})
+    getEmployeeOptions().then(setEmployees).catch(() => {})
   }, [])
 
   // ── История ───────────────────────────────────────────────────────────────────
@@ -108,68 +112,63 @@ export default function ScanScreen() {
     if (!barcode.trim()) return
     setSubmitting(true)
     try {
-      const res  = await api.post(`/inventory/${sessionId}/scan`, {
-        barcode:   barcode.trim(),
-        scannedBy: scannerName,
-      })
-      const data = res.data
+      const data = await scanCode(sessionId, barcode.trim())
+      const ui   = toUiItem(data.item)
+
+      const asset = {
+        id:                ui.id,
+        itemId:            ui.id,
+        inventoryNumber:   ui.asset.inventoryNumber || barcode,
+        name:              ui.asset.name || 'Неизвестно',
+        barcode:           ui.asset.barcode,
+        location:          ui.asset.location.name,
+        responsiblePerson: ui.asset.responsiblePerson.fullName,
+        employee:          ui.asset.employee?.fullName || '—',
+      }
 
       if (data.alreadyScanned) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
         setResult({
           status: 'ALREADY',
-          asset: {
-            id:                data.asset?.id,
-            itemId:            data.item?.id,
-            inventoryNumber:   data.asset?.inventoryNumber || barcode,
-            name:              data.asset?.name || 'Неизвестно',
-            barcode:           data.asset?.barcode || null,
-            location:          data.asset?.location?.name || '—',
-            responsiblePerson: data.asset?.responsiblePerson?.fullName || '—',
-            employee:          data.asset?.employee?.fullName || '—',
+          asset,
+          previousScan: {
+            scannedAt: ui.scannedAt,
+            scannedBy: ui.scannedBy,
+            note:      ui.note,
           },
-          previousScan: data.previousScan ?? null,
         })
-        addToHistory(barcode, 'ALREADY', data.asset?.name || barcode)
+        addToHistory(barcode, 'ALREADY', asset.name)
         return
       }
 
-      const status: ScanStatus = (data.status === 'MISPLACED' || data.isWrongLocation)
-        ? 'MISPLACED'
-        : 'FOUND'
+      const status: ScanStatus =
+        data.status === 'misplaced' ? 'MISPLACED' :
+        data.status === 'surplus'   ? 'SURPLUS'   : 'FOUND'
 
       if (status === 'FOUND') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       else                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
 
       setResult({
         status,
-        asset: {
-          id:                data.asset?.id,
-          itemId:            data.item?.id,
-          inventoryNumber:   data.asset?.inventoryNumber || barcode,
-          name:              data.asset?.name || 'Неизвестно',
-          barcode:           data.asset?.barcode || null,
-          location:          data.asset?.location?.name || '—',
-          responsiblePerson: data.asset?.responsiblePerson?.fullName || '—',
-          employee:          data.asset?.employee?.fullName || '—',
-        },
-        expectedLocation: data.expectedLocation || data.asset?.location?.name,
-        actualLocation:   data.actualLocation,
+        asset,
+        expectedLocation: data.item.expectedLocation ?? undefined,
+        actualLocation:   data.item.actualLocation ?? undefined,
       })
       setScannedCount(c => c + 1)
-      addToHistory(barcode, status, data.asset?.name || barcode)
+      addToHistory(barcode, status, asset.name)
     } catch (e: any) {
       if (e.response?.status === 404) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
         setResult({ status: 'NOT_FOUND', message: `Не найден: ${barcode}` })
         addToHistory(barcode, 'NOT_FOUND', barcode)
       } else {
-        setResult({ status: 'NOT_FOUND', message: e.response?.data?.error || 'Ошибка сервера' })
+        const msg = e.response?.data?.message || e.response?.data?.error || 'Ошибка сервера'
+        setResult({ status: 'NOT_FOUND', message: msg })
       }
     } finally {
       setSubmitting(false)
     }
-  }, [sessionId, scannerName, addToHistory])
+  }, [sessionId, addToHistory])
 
   const handleBarcode = useCallback((data: string) => {
     if (cooldown.current) return
@@ -223,20 +222,19 @@ export default function ScanScreen() {
 
   const handleRelocate = async () => {
     if (!result?.asset) return
-    if (!selectedLocationId && !selectedEmployeeId && !employeeNote.trim()) {
-      Alert.alert('Выберите', 'Выберите кабинет, сотрудника или напишите комментарий')
+    if (!selectedLocationId && !selectedEmployeeId) {
+      notify('Выберите', 'Выберите кабинет или сотрудника')
       return
     }
     setRelocating(true)
     try {
-      await api.patch(`/inventory/${sessionId}/asset/${result.asset.id}/location`, {
-        ...(selectedLocationId && { locationId: selectedLocationId }),
-        ...(selectedEmployeeId && { employeeId: selectedEmployeeId }),
-        ...(employeeNote.trim() && { note: employeeNote.trim() }),
-      })
-
       const loc = locations.find(l => l.id === selectedLocationId)
       const emp = employees.find(e => e.id === selectedEmployeeId)
+
+      await updateItem(sessionId, result.asset.itemId, {
+        ...(loc && { location: loc.name }),
+        ...(emp && { employee: emp.fullName }),
+      })
 
       // ── Сохраняем как "последнее перемещение" ──────────────────────────────
       setLastRelocate({
@@ -255,39 +253,34 @@ export default function ScanScreen() {
 
       setShowRelocate(false)
       resetRelocate()
-      Alert.alert('✅ Готово', msg)
+      notify('✅ Готово', msg)
       handleNext()
     } catch (e: any) {
-      Alert.alert('Ошибка', e.response?.data?.error || 'Не удалось переместить')
+      notify('Ошибка', e.response?.data?.error || 'Не удалось переместить')
     } finally {
       setRelocating(false)
     }
   }
 
   // ── Cancel scan ───────────────────────────────────────────────────────────────
-  const handleCancelScan = () => {
+  const handleCancelScan = async () => {
     if (!result?.asset?.itemId) return
-    Alert.alert(
+    const ok = await confirmDialog(
       'Отменить сканирование?',
       'ОС вернётся в статус "Не проверен"',
-      [
-        { text: 'Нет', style: 'cancel' },
-        {
-          text: 'Да, отменить', style: 'destructive',
-          onPress: async () => {
-            setCancelling(true)
-            try {
-              await api.patch(`/inventory/${sessionId}/item/${result.asset!.itemId}/cancel`)
-              handleNext()
-            } catch {
-              Alert.alert('Ошибка', 'Не удалось отменить')
-            } finally {
-              setCancelling(false)
-            }
-          },
-        },
-      ]
+      'Да, отменить',
+      { cancelText: 'Нет', destructive: true },
     )
+    if (!ok) return
+    setCancelling(true)
+    try {
+      await unscanItem(sessionId, result.asset!.itemId)
+      handleNext()
+    } catch {
+      notify('Ошибка', 'Не удалось отменить')
+    } finally {
+      setCancelling(false)
+    }
   }
 
   // ── Render guards ─────────────────────────────────────────────────────────────

@@ -2,9 +2,13 @@
 
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, View } from 'react-native'
-import api from '../../constants/api'
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native'
 import { Colors } from '../../constants/colors'
+import { confirmDialog, notify } from '../../constants/dialog'
+import {
+  getEmployeeOptions, getLocationOptions, getSessionDetail,
+  unscanItem, updateItem,
+} from '../../constants/sessionsApi'
 
 import SessionHeader from './../components/session/SessionHeader'
 import SessionItemCard from './../components/session/SessionItemCard'
@@ -41,8 +45,7 @@ export default function SessionDetailScreen() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
-      const res   = await api.get(`/inventory/${id}`)
-      const s     = res.data
+      const s     = await getSessionDetail(id)
       const items: Item[] = s.items ?? []
 
       setSession({
@@ -65,7 +68,7 @@ export default function SessionDetailScreen() {
         else                                                 setActiveTab('FOUND')
       }
     } catch {
-      if (!silent) Alert.alert('Ошибка', 'Не удалось загрузить данные')
+      if (!silent) notify('Ошибка', 'Не удалось загрузить данные')
     } finally {
       setLoading(false)
     }
@@ -79,8 +82,8 @@ export default function SessionDetailScreen() {
   }, [load]))
 
   useEffect(() => {
-    api.get('/locations').then(r => setLocations(r.data)).catch(() => {})
-    api.get('/locations/employees').then(r => setEmployees(r.data)).catch(() => {})
+    getLocationOptions().then(setLocations).catch(() => {})
+    getEmployeeOptions().then(setEmployees).catch(() => {})
   }, [])
 
   // ── Relocate ──────────────────────────────────────────────────────────────────
@@ -103,58 +106,52 @@ export default function SessionDetailScreen() {
 
   const handleRelocate = async () => {
     if (!relocateItem) return
-    if (!selectedLocationId && !selectedEmployeeId && !employeeNote.trim()) {
-      Alert.alert('Выберите', 'Выберите кабинет, сотрудника или напишите комментарий')
+    if (!selectedLocationId && !selectedEmployeeId) {
+      notify('Выберите', 'Выберите кабинет или сотрудника')
       return
     }
     setRelocating(true)
     try {
-      await api.patch(`/inventory/${id}/asset/${relocateItem.asset.id}/location`, {
-        ...(selectedLocationId && { locationId: selectedLocationId }),
-        ...(selectedEmployeeId && { employeeId: selectedEmployeeId }),
-        ...(employeeNote.trim() && { note: employeeNote.trim() }),
-      })
       const loc = locations.find(l => l.id === selectedLocationId)
       const emp = employees.find(e => e.id === selectedEmployeeId)
+      await updateItem(id, relocateItem.id, {
+        ...(loc && { location: loc.name }),
+        ...(emp && { employee: emp.fullName }),
+      })
       const msg = [
         loc && `Кабинет: ${loc.name}`,
         emp && `Сотрудник: ${emp.fullName}`,
         employeeNote.trim() && `Комментарий: ${employeeNote.trim()}`,
       ].filter(Boolean).join('\n')
       closeRelocate()
-      Alert.alert('✅ Готово', msg)
+      notify('✅ Готово', msg)
       await load(true)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } } }
-      Alert.alert('Ошибка', err.response?.data?.error || 'Не удалось сохранить')
+      notify('Ошибка', err.response?.data?.error || 'Не удалось сохранить')
     } finally {
       setRelocating(false)
     }
   }
 
   // ── Cancel scan ───────────────────────────────────────────────────────────────
-  const handleCancelScan = (item: Item) => {
-    Alert.alert(
+  const handleCancelScan = async (item: Item) => {
+    const ok = await confirmDialog(
       'Отменить сканирование?',
       `"${item.asset.name}" вернётся в статус "Не проверен"`,
-      [
-        { text: 'Нет', style: 'cancel' },
-        {
-          text: 'Да, отменить', style: 'destructive',
-          onPress: async () => {
-            setCancelling(item.id)
-            try {
-              await api.patch(`/inventory/${id}/item/${item.id}/cancel`)
-              await load(true)
-            } catch {
-              Alert.alert('Ошибка', 'Не удалось отменить')
-            } finally {
-              setCancelling(null)
-            }
-          },
-        },
-      ]
+      'Да, отменить',
+      { cancelText: 'Нет', destructive: true },
     )
+    if (!ok) return
+    setCancelling(item.id)
+    try {
+      await unscanItem(id, item.id)
+      await load(true)
+    } catch {
+      notify('Ошибка', 'Не удалось отменить')
+    } finally {
+      setCancelling(null)
+    }
   }
 
   // ── Список для активной вкладки ───────────────────────────────────────────────

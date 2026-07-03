@@ -47,6 +47,8 @@ export interface LookupResult {
   responsiblePerson:   { fullName: string } | null
   organization:        { name: string } | null
   photoKey:            string | null
+  // относительный URL фото с нашего бэкенда (/api/inventory/type-photo?...)
+  photoPath:           string | null
 }
 
-export type Tab = 'inventory' | 'collection' | 'lookup'
+export type Tab = 'inventory' | 'collection' | 'lookup' | 'my' | 'assets' | 'types' | 'sync'

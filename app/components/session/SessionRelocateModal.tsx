@@ -44,7 +44,7 @@ export default function SessionRelocateModal({
   const canConfirm    = hasSelection && !relocating
 
   return (
-    <Modal visible={!!item} transparent animationType="slide">
+    <Modal visible={!!item} transparent animationType="fade">
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -187,10 +187,11 @@ export default function SessionRelocateModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: '#000000aa', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: '#000000cc', justifyContent: 'center', padding: 16 },
   modal:   {
-    backgroundColor: Colors.bg2, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 20, maxHeight: '90%',
+    backgroundColor: Colors.bg2, borderRadius: 20,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: 20, maxHeight: '88%',
   },
   title:     { fontSize: 16, fontWeight: '700', color: Colors.text1, marginBottom: 12 },
   assetInfo: { backgroundColor: Colors.bg3, borderRadius: 10, padding: 12, marginBottom: 12 },
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
     color: Colors.text1, fontSize: 14, padding: 10, marginBottom: 8,
   },
-  list:       { maxHeight: 180, marginBottom: 8 },
+  list:       { maxHeight: 300, marginBottom: 8 },
   item: {
     padding: 12, borderRadius: 8, marginBottom: 6,
     backgroundColor: Colors.bg3, borderWidth: 1, borderColor: Colors.border,

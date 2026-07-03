@@ -1,6 +1,6 @@
 // components/scan/types.ts
 
-export type ScanStatus = 'FOUND' | 'MISPLACED' | 'NOT_FOUND' | 'ALREADY'
+export type ScanStatus = 'FOUND' | 'MISPLACED' | 'NOT_FOUND' | 'ALREADY' | 'SURPLUS'
 
 export type ScannedAsset = {
   id:                number

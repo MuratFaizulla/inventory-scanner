@@ -1,6 +1,9 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Feather } from '@expo/vector-icons'
+import { useState } from 'react'
+import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { getApiBase } from '../../../constants/api'
 import { Colors } from '../../../constants/colors'
+import { photoUri } from '../onec/inventory'
 import type { LookupResult } from './types'
 
 const fmtDate = (d: string | null) =>
@@ -12,9 +15,10 @@ interface Props {
 }
 
 export default function LookupResultCard({ result, onReset }: Props) {
-  const photoUri = result.photoKey
-    ? `${getApiBase()}/photos/${result.photoKey}`
-    : null
+  const [lightbox, setLightbox] = useState(false)
+  // photoPath — наш бэкенд (относительный URL); photoKey — легаси, оставлен на всякий случай
+  const photo = photoUri(result.photoPath)
+    ?? (result.photoKey ? `${getApiBase()}/photos/${result.photoKey}` : null)
 
   const rows: { label: string; value: string; color?: string }[] = [
     { label: 'Инв. номер',    value: result.inventoryNumber },
@@ -37,8 +41,13 @@ export default function LookupResultCard({ result, onReset }: Props) {
         </TouchableOpacity>
       </View>
 
-      {photoUri && (
-        <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
+      {photo && (
+        <TouchableOpacity activeOpacity={0.85} onPress={() => setLightbox(true)}>
+          <Image source={{ uri: photo }} style={styles.photo} resizeMode="contain" />
+          <View style={styles.zoomHint}>
+            <Feather name="maximize-2" size={11} color="#fff" />
+          </View>
+        </TouchableOpacity>
       )}
 
       {rows.map(row => (
@@ -49,6 +58,22 @@ export default function LookupResultCard({ result, onReset }: Props) {
           </Text>
         </View>
       ))}
+
+      {/* Полноэкранный просмотр фото */}
+      <Modal visible={lightbox} animationType="fade" transparent onRequestClose={() => setLightbox(false)}>
+        <TouchableOpacity
+          style={styles.lightbox}
+          activeOpacity={1}
+          onPress={() => setLightbox(false)}
+        >
+          {!!photo && (
+            <Image source={{ uri: photo }} style={styles.lightboxImg} resizeMode="contain" />
+          )}
+          <View style={styles.lightboxClose}>
+            <Feather name="x" size={18} color="#fff" />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   )
 }
@@ -65,9 +90,14 @@ const styles = StyleSheet.create({
   name:     { fontSize: 16, fontWeight: '700', color: Colors.text1, flex: 1 },
   resetBtn: { padding: 4, marginLeft: 8 },
   resetIcon: { fontSize: 18, color: Colors.text3 },
+  // contain + белый фон — фото 1С обычно на белом, cover их обрезал
   photo: {
     width: '100%', height: 200, borderRadius: 10,
-    marginBottom: 12, backgroundColor: Colors.bg3,
+    marginBottom: 12, backgroundColor: '#fff',
+  },
+  zoomHint: {
+    position: 'absolute', right: 8, bottom: 20,
+    backgroundColor: 'rgba(2,6,23,0.55)', borderRadius: 8, padding: 6,
   },
   row: {
     flexDirection: 'row', justifyContent: 'space-between',
@@ -76,4 +106,14 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: 12, color: Colors.text3, flexShrink: 0, marginRight: 8 },
   value: { fontSize: 13, color: Colors.text1, fontWeight: '600', flex: 1, textAlign: 'right' },
+
+  lightbox: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.95)',
+    alignItems: 'center', justifyContent: 'center', padding: 12,
+  },
+  lightboxImg: { width: '100%', height: '85%' },
+  lightboxClose: {
+    position: 'absolute', top: 48, right: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 9999, padding: 10,
+  },
 })

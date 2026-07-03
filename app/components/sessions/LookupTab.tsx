@@ -5,7 +5,7 @@ import {
   Modal, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native'
-import api from '../../../constants/api'
+import { lookupAsset } from '../../../constants/sessionsApi'
 import { Colors } from '../../../constants/colors'
 import CameraScanner from '../scan/CameraScanner'
 import LookupResultCard from './LookupResultCard'
@@ -28,11 +28,16 @@ export default function LookupTab() {
     setError(null)
     setResult(null)
     try {
-      const res = await api.get(`/assets/scan/${encodeURIComponent(b)}`)
-      setResult(res.data)
+      const found = await lookupAsset(b)
+      if (!found) {
+        setError('ОС не найдена')
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+        return
+      }
+      setResult(found)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(msg ?? 'ОС не найдена')
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
     } finally {

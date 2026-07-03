@@ -1,6 +1,8 @@
 // components/session/SessionHeader.tsx
 
+import { Feather } from '@expo/vector-icons'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Colors } from '../../../constants/colors'
 import type { SessionDetail } from './types'
 
@@ -11,61 +13,69 @@ interface Props {
 }
 
 export default function SessionHeader({ session, onBack, onRefresh }: Props) {
+  const insets = useSafeAreaInsets()
+  const checked = session.found + session.notFound + session.misplaced
+  const progress = session.total > 0 ? Math.round((checked / session.total) * 100) : 0
+
   return (
-    <>
+    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
       {/* Шапка */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
+        <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
+          <Feather name="arrow-left" size={19} color={Colors.text1} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title} numberOfLines={1}>{session.name}</Text>
-          <Text style={styles.sub}>📍 {session.location} · {session.total} ОС</Text>
+          <View style={styles.subRow}>
+            <Feather name="map-pin" size={10} color={Colors.text3} />
+            <Text style={styles.sub} numberOfLines={1}>{session.location}</Text>
+          </View>
         </View>
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshBtn}>
-          <Text style={styles.refreshText}>🔄</Text>
+        <TouchableOpacity onPress={onRefresh} style={styles.iconBtn}>
+          <Feather name="refresh-cw" size={16} color={Colors.text2} />
         </TouchableOpacity>
       </View>
 
-      {/* Статистика */}
-      <View style={styles.statsRow}>
-        {([
-          { label: 'Всего', value: session.total,     color: Colors.text2   },
-          { label: '✅',    value: session.found,     color: Colors.accent2 },
-          { label: '❌',    value: session.notFound,  color: Colors.danger  },
-          { label: '⚠️',   value: session.misplaced, color: Colors.warn    },
-          { label: '⏳',   value: session.pending,   color: Colors.text3   },
-        ]).map(s => (
-          <View key={s.label} style={styles.statBox}>
-            <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-            <Text style={styles.statLabel}>{s.label}</Text>
-          </View>
-        ))}
+      {/* Прогресс (счётчики по статусам — во вкладках ниже) */}
+      <View style={styles.progressRow}>
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { flex: progress }]} />
+          <View style={{ flex: 100 - progress }} />
+        </View>
+        <Text style={styles.progressText}>
+          {progress}% · {checked} из {session.total}
+        </Text>
       </View>
-    </>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  wrap: {
+    backgroundColor: Colors.bg2,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: Colors.bg2,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    paddingHorizontal: 12, paddingBottom: 8,
   },
-  backBtn:     { padding: 4 },
-  backText:    { fontSize: 24, color: Colors.accent },
-  title:       { fontSize: 14, fontWeight: '700', color: Colors.text1 },
-  sub:         { fontSize: 11, color: Colors.text3, marginTop: 2 },
-  refreshBtn:  { padding: 8 },
-  refreshText: { fontSize: 18 },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.bg2,
-    paddingVertical: 10, paddingHorizontal: 8,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  iconBtn: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: Colors.bg3,
+    alignItems: 'center', justifyContent: 'center',
   },
-  statBox:   { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 18, fontWeight: '700' },
-  statLabel: { fontSize: 10, color: Colors.text3, marginTop: 2 },
+  title:  { fontSize: 15, fontWeight: '700', color: Colors.text1 },
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  sub:    { fontSize: 11, color: Colors.text3, flexShrink: 1 },
+
+  progressRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingBottom: 8,
+  },
+  progressBar: {
+    flex: 1, flexDirection: 'row', height: 6,
+    backgroundColor: Colors.bg3, borderRadius: 3, overflow: 'hidden',
+  },
+  progressFill: { backgroundColor: Colors.accent2, borderRadius: 3 },
+  progressText: { fontSize: 11, color: Colors.text3, fontVariant: ['tabular-nums'] },
 })

@@ -59,7 +59,7 @@ export default function RelocateModal({
   const canConfirm   = hasSelection && !relocating
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal visible={visible} transparent animationType="fade">
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -150,7 +150,7 @@ export default function RelocateModal({
             style={[styles.list, {
               maxHeight: keyboardHeight > 0
                 ? screenHeight - keyboardHeight - 240
-                : 160,
+                : 300,
             }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -245,10 +245,11 @@ export default function RelocateModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: '#000000aa', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: '#000000cc', justifyContent: 'center', padding: 16 },
   modal:   {
-    backgroundColor: Colors.bg2, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 20, maxHeight: '92%',
+    backgroundColor: Colors.bg2, borderRadius: 20,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: 20, maxHeight: '88%',
   },
   title:     { fontSize: 16, fontWeight: '700', color: Colors.text1, marginBottom: 12 },
   assetInfo: { backgroundColor: Colors.bg3, borderRadius: 10, padding: 12, marginBottom: 12 },
