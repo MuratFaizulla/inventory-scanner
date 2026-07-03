@@ -21,10 +21,10 @@ const TABS: {
   roles?: string[]
 }[] = [
   { key: 'inventory', icon: 'clipboard', label: 'Акты',  roles: ['admin', 'lead'] },
-  { key: 'lookup',    icon: 'search',    label: 'Поиск', roles: ['admin', 'lead'] },
+  { key: 'types',     icon: 'grid',      label: 'Виды',  roles: ['admin'] },
   { key: 'my',        icon: 'package',   label: 'Моё' },
   { key: 'assets',    icon: 'archive',   label: 'ОС',    roles: ['admin'] },
-  { key: 'types',     icon: 'grid',      label: 'Виды',  roles: ['admin'] },
+  { key: 'lookup',    icon: 'search',    label: 'Поиск', roles: ['admin', 'lead'] },
 ]
 
 const ROLE_LABELS: Record<string, string> = {

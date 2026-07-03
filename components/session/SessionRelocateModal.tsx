@@ -148,13 +148,14 @@ export default function SessionRelocateModal({
           {/* Итог выбора */}
           {hasSelection && (
             <View style={styles.summary}>
-              {selectedLocationId && (
+              {!!selectedLocationId && (
                 <Text style={styles.sumLoc}>📍 → {locations.find(l => l.id === selectedLocationId)?.name}</Text>
               )}
-              {selectedEmployeeId && (
+              {!!selectedEmployeeId && (
                 <Text style={styles.sumEmp}>🧑‍💼 → {employees.find(e => e.id === selectedEmployeeId)?.fullName}</Text>
               )}
-              {employeeNote.trim() && !selectedEmployeeId && (
+              {/* !! обязательно: пустая строка от trim() попадает ребёнком в View */}
+              {!!employeeNote.trim() && !selectedEmployeeId && (
                 <Text style={styles.sumNote}>✏️ {employeeNote.trim()}</Text>
               )}
             </View>
