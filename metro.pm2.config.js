@@ -12,6 +12,9 @@ module.exports = {
   apps: [
     {
       name: 'nis-scanner',
+      // Фиксируем папку проекта: pm2 resurrect после перезагрузки сервера
+      // может стартовать из другого cwd — относительный script тогда не найдётся
+      cwd: 'C:/inetpub/wwwroot/inventory-scanner',
       // expo CLI — обычный node-скрипт: pm2 запускает его сам, без cmd/npx.
       // --offline: не ходить в сервера Expo (авторизация, проверки) —
       // без него в неинтерактивном режиме падает «Input is required»
