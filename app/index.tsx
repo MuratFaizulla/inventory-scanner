@@ -91,7 +91,7 @@ export default function LoginScreen() {
         >
           <Text style={styles.icon}>📦</Text>
           <Text style={styles.title}>1С Интеграция</Text>
-          <Text style={styles.subtitle}>НИШ Туркестан</Text>
+          <Text style={styles.subtitle}>НИШ Өскемен</Text>
 
           <View style={styles.card}>
             {/* IP */}

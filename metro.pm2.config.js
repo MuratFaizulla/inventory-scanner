@@ -1,5 +1,5 @@
-// PM2-конфиг для Metro (Expo dev server) на Windows-сервере 10.35.14.13.
-// Нужен для запуска приложения на iPhone через Expo Go (exp://10.35.14.13:8081).
+// PM2-конфиг для Metro (Expo dev server) на Windows-сервере 10.22.5.53 (UKK).
+// Нужен для запуска приложения на iPhone через Expo Go (exp://10.22.5.53:8081).
 //
 // Запуск (PowerShell, из папки inventory-scanner):
 //   pm2 start metro.pm2.config.js
@@ -14,7 +14,7 @@ module.exports = {
       name: 'nis-scanner',
       // Фиксируем папку проекта: pm2 resurrect после перезагрузки сервера
       // может стартовать из другого cwd — относительный script тогда не найдётся
-      cwd: 'C:/inetpub/wwwroot/inventory-scanner',
+      cwd: 'C:/Users/Admin/Desktop/inventory-scanner',
       // expo CLI — обычный node-скрипт: pm2 запускает его сам, без cmd/npx.
       // --offline: не ходить в сервера Expo (авторизация, проверки) —
       // без него в неинтерактивном режиме падает «Input is required».
@@ -26,7 +26,7 @@ module.exports = {
       args: 'start --port 8081 --offline',
       env: {
         // Адрес, который Metro отдаёт телефонам (иначе подставит внутренний IP)
-        REACT_NATIVE_PACKAGER_HOSTNAME: '10.35.14.13',
+        REACT_NATIVE_PACKAGER_HOSTNAME: '10.22.5.53',
         // Неинтерактивный режим — под pm2 нет клавиатуры
         CI: '1',
         EXPO_NO_TELEMETRY: '1',

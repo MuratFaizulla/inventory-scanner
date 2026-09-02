@@ -240,7 +240,7 @@ export default function HelpScreen() {
           <SectionHead icon="log-in" color={Colors.accent} title="Вход" roles="все" />
           <Steps steps={[
             { t: 'Укажите адрес сервера',
-              d: 'IP и порт без http:// — например 10.35.14.13:100. Обычно уже заполнен.' },
+              d: 'IP и порт без http:// — например 10.22.5.53:3000. Обычно уже заполнен.' },
             { t: 'Введите доменные логин и пароль',
               d: 'Те же, что на рабочем компьютере школы.' },
             { t: 'Включите «Запомнить логин и пароль»',
@@ -322,7 +322,7 @@ export default function HelpScreen() {
           <FlowChain items={[
             { emoji: '📱', t: 'Телефон' },
             { emoji: '📶', t: 'Wi-Fi школы' },
-            { emoji: '🖥️', t: 'Сервер', d: '10.35.14.13:100' },
+            { emoji: '🖥️', t: 'Сервер', d: '10.22.5.53:3000' },
           ]} />
           <Text style={s.subHead}>Пишет «Сервер недоступен» — проверьте по порядку:</Text>
           <Steps steps={[
@@ -334,7 +334,7 @@ export default function HelpScreen() {
           <Note text="«Поделиться приложением» в Настройках отправит коллеге ссылку на страницу установки (Android APK и инструкция для iPhone)." />
         </View>
 
-        <Text style={s.footer}>Вопросы и проблемы — в IT-отдел НИШ Туркестан</Text>
+        <Text style={s.footer}>Вопросы и проблемы — в IT-отдел НИШ Өскемен</Text>
         <View style={{ height: 32 }} />
       </ScrollView>
     </View>
