@@ -23,7 +23,7 @@ module.exports = {
       // --localhost»); lan — режим по умолчанию, а адрес для телефонов
       // задаёт REACT_NATIVE_PACKAGER_HOSTNAME ниже
       script: './node_modules/expo/bin/cli',
-      args: 'start --port 8081 --offline',
+      args: 'start --port 8081 --offline --max-workers 1',
       env: {
         // Адрес, который Metro отдаёт телефонам (иначе подставит внутренний IP)
         REACT_NATIVE_PACKAGER_HOSTNAME: '10.22.5.53',
