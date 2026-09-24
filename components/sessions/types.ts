@@ -19,16 +19,6 @@ export interface InventorySessionDetail {
   pending:   number
 }
 
-export interface CollectionSession {
-  id:        number
-  name:      string
-  status:    'OPEN' | 'CLOSED'
-  assetType: string | null
-  deadline:  string | null
-  createdBy: string | null
-  _count:    { items: number }
-}
-
 export interface LookupResult {
   id:                  number
   name:                string
@@ -51,4 +41,4 @@ export interface LookupResult {
   photoPath:           string | null
 }
 
-export type Tab = 'inventory' | 'collection' | 'lookup' | 'my' | 'assets' | 'types' | 'sync'
+export type Tab = 'inventory' | 'lookup' | 'my' | 'assets' | 'types' | 'sync'

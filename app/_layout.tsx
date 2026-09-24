@@ -53,8 +53,6 @@ export default function RootLayout() {
         <Stack.Screen name="help"         options={{ headerShown: false }} />
         <Stack.Screen name="scan"         options={{ headerShown: false }} />
         <Stack.Screen name="session/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="collection/[id]"         options={{ title: 'Сбор ОС' }} />
-        <Stack.Screen name="collection/detail/[id]"  options={{ title: 'Сессия сбора' }} />
       </Stack>
     </>
   )
