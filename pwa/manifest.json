@@ -1,0 +1,15 @@
+{
+  "name": "1C NIS — инвентаризация",
+  "short_name": "1C NIS",
+  "description": "Инвентаризация основных средств НИШ Өскемен",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "icon.png", "sizes": "192x192 512x512 1024x1024", "type": "image/png", "purpose": "any" }
+  ]
+}

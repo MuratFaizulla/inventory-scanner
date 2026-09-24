@@ -1,6 +1,7 @@
 // components/scan/types.ts
 
-export type ScanStatus = 'FOUND' | 'MISPLACED' | 'NOT_FOUND' | 'ALREADY' | 'SURPLUS'
+// OFFLINE_UNKNOWN — без сети, и кода нет в копии акта: решит сервер при отправке
+export type ScanStatus = 'FOUND' | 'MISPLACED' | 'NOT_FOUND' | 'ALREADY' | 'SURPLUS' | 'OFFLINE_UNKNOWN'
 
 export type ScannedAsset = {
   id:                number
@@ -26,6 +27,7 @@ export type ScanResult = {
   actualLocation?:  string
   message?:         string
   previousScan?:    PreviousScan
+  queued?:          boolean   // скан пока на телефоне — уйдёт, когда будет связь
 }
 
 export type HistoryItem = {

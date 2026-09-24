@@ -18,6 +18,7 @@ export interface Item {
   note:      string | null
   scannedAt: string | null
   scannedBy: string | null
+  queued?:   boolean   // изменение пока на телефоне, ждёт связи
   asset:     Asset
 }
 

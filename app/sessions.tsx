@@ -9,6 +9,7 @@ import { Colors } from '../constants/colors'
 import AssetsView from '../components/onec/AssetsView'
 import MyAssetsView from '../components/onec/MyAssetsView'
 import TypesView from '../components/onec/TypesView'
+import SyncBanner from '../components/SyncBanner'
 import InventoryTab from '../components/sessions/InventoryTab'
 import LookupTab from '../components/sessions/LookupTab'
 import type { Tab } from '../components/sessions/types'
@@ -98,6 +99,8 @@ export default function SessionsScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      <SyncBanner />
 
       {/* ── Контент ── */}
       <View style={{ flex: 1 }}>

@@ -21,7 +21,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/icon-zhapirak.png"
     },
     "plugins": [
@@ -50,6 +50,7 @@
       "expo-web-browser"
     ],
     "experiments": {
+      "baseUrl": "/scanner",
       "typedRoutes": true,
       "reactCompiler": true
     },

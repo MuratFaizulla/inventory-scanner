@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import { Platform } from 'react-native'
 
 // Кэш хоста в памяти — заполняется при старте и при смене хоста
 let cachedHost = ''
@@ -42,11 +43,17 @@ export const hasTokens = () => !!accessToken
 
 export const getAccessToken = () => accessToken
 
-// Синхронный геттер
-export const getApiBase = () => `http://${cachedHost}/api`
+// Веб-версия по HTTPS (nginx раздаёт /scanner/ и проксирует /api/ на бэкенд):
+// API всегда там же, где страница. Адрес сервера вводить незачем, а запрос
+// на http://… со страницы https браузер всё равно заблокирует (mixed content)
+export const sameOrigin =
+  Platform.OS === 'web' && typeof window !== 'undefined' && window.location.protocol === 'https:'
 
 // База без /api — для относительных URL (фото: /api/inventory/type-photo?...)
-export const getHostBase = () => `http://${cachedHost}`
+export const getHostBase = () => (sameOrigin ? window.location.origin : `http://${cachedHost}`)
+
+// Синхронный геттер
+export const getApiBase = () => `${getHostBase()}/api`
 
 // Подписка на «сессия истекла» — router в _layout возвращает на логин
 type ExpiredListener = () => void

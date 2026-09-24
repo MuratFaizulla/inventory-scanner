@@ -13,10 +13,11 @@ import {
 import { confirmDialog, notify } from '../constants/dialog'
 import { goBack } from '../constants/nav'
 import {
-  getEmployeeOptions, getLocationOptions,
+  getEmployeeOptions, getLocationOptions, getSessionDetail,
   scanCode, toUiItem, unscanItem, updateItem,
 } from '../constants/sessionsApi'
 
+import SyncBanner from '../components/SyncBanner'
 import CameraScanner from '../components/scan/CameraScanner'
 import HistoryScreen from '../components/scan/HistoryScreen'
 import ManualInput from '../components/scan/ManualInput'
@@ -86,7 +87,10 @@ export default function ScanScreen() {
     AsyncStorage.getItem('scannerName').then(n => setScannerName(n || ''))
     getLocationOptions().then(setLocations).catch(() => {})
     getEmployeeOptions().then(setEmployees).catch(() => {})
-  }, [])
+    // Сохранить акт на телефон, пока есть связь, — дальше по кабинетам
+    // сканировать можно и без Wi-Fi
+    getSessionDetail(sessionId).catch(() => {})
+  }, [sessionId])
 
   // ── История ───────────────────────────────────────────────────────────────────
   const addToHistory = useCallback((barcode: string, status: ScanStatus, name: string) => {
@@ -114,6 +118,19 @@ export default function ScanScreen() {
     setSubmitting(true)
     try {
       const data = await scanCode(sessionId, barcode.trim())
+
+      if (data.status === 'unknown') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+        setResult({
+          status:  'OFFLINE_UNKNOWN',
+          queued:  true,
+          message: `Кода ${barcode.trim()} нет в сохранённой копии акта. Когда появится связь, сервер решит: излишек это или такого ОС нет в базе.`,
+        })
+        setScannedCount(c => c + 1)
+        addToHistory(barcode, 'OFFLINE_UNKNOWN', barcode)
+        return
+      }
+
       const ui   = toUiItem(data.item)
 
       const asset = {
@@ -154,6 +171,7 @@ export default function ScanScreen() {
         asset,
         expectedLocation: data.item.expectedLocation ?? undefined,
         actualLocation:   data.item.actualLocation ?? undefined,
+        queued:           data.queued,
       })
       setScannedCount(c => c + 1)
       addToHistory(barcode, status, asset.name)
@@ -163,7 +181,10 @@ export default function ScanScreen() {
         setResult({ status: 'NOT_FOUND', message: `Не найден: ${barcode}` })
         addToHistory(barcode, 'NOT_FOUND', barcode)
       } else {
-        const msg = e.response?.data?.message || e.response?.data?.error || 'Ошибка сервера'
+        // Без ответа сервера — своя ошибка оффлайна (акт не сохранён на телефоне и т.п.)
+        const msg = e.response
+          ? e.response.data?.message || e.response.data?.error || 'Ошибка сервера'
+          : e.message || 'Ошибка сервера'
         setResult({ status: 'NOT_FOUND', message: msg })
       }
     } finally {
@@ -232,7 +253,7 @@ export default function ScanScreen() {
       const loc = locations.find(l => l.id === selectedLocationId)
       const emp = employees.find(e => e.id === selectedEmployeeId)
 
-      await updateItem(sessionId, result.asset.itemId, {
+      const { queued } = await updateItem(sessionId, result.asset.itemId, {
         ...(loc && { location: loc.name }),
         ...(emp && { employee: emp.fullName }),
       })
@@ -250,6 +271,7 @@ export default function ScanScreen() {
         loc && `Кабинет: ${loc.name}`,
         emp && `Сотрудник: ${emp.fullName}`,
         employeeNote.trim() && `Комментарий: ${employeeNote.trim()}`,
+        queued && '📴 Сохранено на телефоне — уйдёт, когда появится связь',
       ].filter(Boolean).join('\n')
 
       setShowRelocate(false)
@@ -257,7 +279,7 @@ export default function ScanScreen() {
       notify('✅ Готово', msg)
       handleNext()
     } catch (e: any) {
-      notify('Ошибка', e.response?.data?.error || 'Не удалось переместить')
+      notify('Ошибка', e.response?.data?.error || e.message || 'Не удалось переместить')
     } finally {
       setRelocating(false)
     }
@@ -329,6 +351,8 @@ export default function ScanScreen() {
         onHistory={() => setShowHistory(true)}
         onStats={() => setShowStatsByLocation(true)}
       />
+
+      <SyncBanner />
 
       {!result && !showManual ? (
         <CameraScanner

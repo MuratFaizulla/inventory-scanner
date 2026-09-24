@@ -33,6 +33,14 @@ export default function ScanResultCard({
         )}
       </View>
 
+      {result.queued && (
+        <View style={styles.queuedBox}>
+          <Text style={styles.queuedText}>
+            📴 Нет связи — скан сохранён на телефоне и уйдёт на сервер сам, когда появится Wi-Fi
+          </Text>
+        </View>
+      )}
+
       {/* ── Карточка ОС ── */}
       {asset ? (
         <View style={styles.card}>
@@ -101,7 +109,9 @@ export default function ScanResultCard({
         </View>
       ) : (
         <View style={styles.card}>
-          <Text style={styles.notFoundText}>{result.message}</Text>
+          <Text style={[styles.notFoundText, status === 'OFFLINE_UNKNOWN' && { color: Colors.text2 }]}>
+            {result.message}
+          </Text>
         </View>
       )}
 
@@ -140,6 +150,11 @@ const styles = StyleSheet.create({
   statusEmoji:   { fontSize: 48, marginBottom: 8 },
   statusLabel:   { fontSize: 20, fontWeight: '700' },
   alreadyHint:   { fontSize: 12, color: '#94a3b8', marginTop: 6, textAlign: 'center' },
+  queuedBox: {
+    backgroundColor: 'rgba(250,204,21,0.08)', borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(250,204,21,0.3)', padding: 12,
+  },
+  queuedText:    { fontSize: 12, color: Colors.warn, textAlign: 'center', lineHeight: 17 },
   card: {
     backgroundColor: Colors.bg2, borderRadius: 14,
     borderWidth: 1, borderColor: Colors.border, padding: 18,

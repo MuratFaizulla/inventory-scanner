@@ -8,6 +8,7 @@ export const statusColor = (s: ScanStatus) => {
   if (s === 'MISPLACED') return Colors.warn
   if (s === 'ALREADY')   return '#60a5fa'
   if (s === 'SURPLUS')   return '#3b82f6'
+  if (s === 'OFFLINE_UNKNOWN') return Colors.warn
   return Colors.danger
 }
 
@@ -16,6 +17,7 @@ export const statusBg = (s: ScanStatus) => {
   if (s === 'MISPLACED') return '#451a0333'
   if (s === 'ALREADY')   return '#1e3a5f33'
   if (s === 'SURPLUS')   return '#1e3a5f33'
+  if (s === 'OFFLINE_UNKNOWN') return '#451a0333'
   return '#450a0a33'
 }
 
@@ -24,6 +26,7 @@ export const statusEmoji = (s: ScanStatus) => {
   if (s === 'MISPLACED') return '⚠️'
   if (s === 'ALREADY')   return '🔄'
   if (s === 'SURPLUS')   return '➕'
+  if (s === 'OFFLINE_UNKNOWN') return '📴'
   return '❌'
 }
 
@@ -32,5 +35,6 @@ export const statusLabel = (s: ScanStatus) => {
   if (s === 'MISPLACED') return 'Не на месте'
   if (s === 'ALREADY')   return 'Уже отсканирован'
   if (s === 'SURPLUS')   return 'Излишек (не числится в акте)'
+  if (s === 'OFFLINE_UNKNOWN') return 'Нет в акте — проверим при отправке'
   return 'Не найден'
 }

@@ -11,6 +11,7 @@ import {
   unscanItem, updateItem,
 } from '../../constants/sessionsApi'
 
+import SyncBanner from '../../components/SyncBanner'
 import SessionHeader from '../../components/session/SessionHeader'
 import SessionItemCard from '../../components/session/SessionItemCard'
 import SessionRelocateModal from '../../components/session/SessionRelocateModal'
@@ -43,7 +44,11 @@ export default function SessionDetailScreen() {
   const [cancelling, setCancelling] = useState<number | null>(null)
 
   // ── Загрузка данных ───────────────────────────────────────────────────────────
+  // Без сети запрос ждёт таймаут дольше интервала автообновления — не копим их
+  const inFlight = useRef(false)
   const load = useCallback(async (silent = false) => {
+    if (silent && inFlight.current) return
+    inFlight.current = true
     if (!silent) setLoading(true)
     try {
       const s     = await getSessionDetail(id)
@@ -71,6 +76,7 @@ export default function SessionDetailScreen() {
     } catch {
       if (!silent) notify('Ошибка', 'Не удалось загрузить данные')
     } finally {
+      inFlight.current = false
       setLoading(false)
     }
   }, [id])
@@ -115,7 +121,7 @@ export default function SessionDetailScreen() {
     try {
       const loc = locations.find(l => l.id === selectedLocationId)
       const emp = employees.find(e => e.id === selectedEmployeeId)
-      await updateItem(id, relocateItem.id, {
+      const { queued } = await updateItem(id, relocateItem.id, {
         ...(loc && { location: loc.name }),
         ...(emp && { employee: emp.fullName }),
       })
@@ -123,13 +129,14 @@ export default function SessionDetailScreen() {
         loc && `Кабинет: ${loc.name}`,
         emp && `Сотрудник: ${emp.fullName}`,
         employeeNote.trim() && `Комментарий: ${employeeNote.trim()}`,
+        queued && '📴 Сохранено на телефоне — уйдёт, когда появится связь',
       ].filter(Boolean).join('\n')
       closeRelocate()
       notify('✅ Готово', msg)
       await load(true)
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } } }
-      notify('Ошибка', err.response?.data?.error || 'Не удалось сохранить')
+      const err = e as { response?: { data?: { error?: string } }; message?: string }
+      notify('Ошибка', err.response?.data?.error || err.message || 'Не удалось сохранить')
     } finally {
       setRelocating(false)
     }
@@ -148,8 +155,8 @@ export default function SessionDetailScreen() {
     try {
       await unscanItem(id, item.id)
       await load(true)
-    } catch {
-      notify('Ошибка', 'Не удалось отменить')
+    } catch (e: unknown) {
+      notify('Ошибка', (e as Error).message || 'Не удалось отменить')
     } finally {
       setCancelling(null)
     }
@@ -182,6 +189,8 @@ export default function SessionDetailScreen() {
         onBack={() => goBack(router)}
         onRefresh={() => load(true)}
       />
+
+      <SyncBanner />
 
       <SessionTabs
         session={session}

@@ -7,8 +7,9 @@ import {
 } from 'react-native'
 import { Colors } from '../../constants/colors'
 import { confirmDialog, notify } from '../../constants/dialog'
+import { getOfflineState } from '../../constants/offline'
 import {
-  listSessions, RawSession, sessionAction,
+  getSessionDetail, listSessions, RawSession, sessionAction,
 } from '../../constants/sessionsApi'
 import CreateSessionModal from './CreateSessionModal'
 import { sessionStyles as s } from './sessionStyles'
@@ -32,7 +33,15 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setSessions(await listSessions())
+      const list = await listSessions()
+      setSessions(list)
+      // Пока есть связь — сохранить запущенные акты на телефон, чтобы в
+      // кабинете без Wi-Fi сканировать, даже не открывая акт заранее
+      if (getOfflineState().online) {
+        list
+          .filter(x => x.status === 'in_progress')
+          .forEach(x => { getSessionDetail(x.id).catch(() => {}) })
+      }
     } catch {
       notify('Ошибка', 'Не удалось загрузить акты инвентаризации')
     } finally {

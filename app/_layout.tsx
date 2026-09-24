@@ -1,16 +1,26 @@
 import { Stack, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
-import { View } from 'react-native'
-import { getApiBase, initApiHost, onAuthExpired } from '../constants/api'
+import { Platform, View } from 'react-native'
+import { getApiBase, initApiHost, onAuthExpired, sameOrigin } from '../constants/api'
+import { initOffline, useAutoSync } from '../constants/offline'
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false)
   const router = useRouter()
+  useAutoSync()
 
   useEffect(() => {
     onAuthExpired(() => router.replace('/'))
+    // Веб по HTTPS: service worker держит приложение в кэше браузера —
+    // открывается и без сети (шаблон pwa/sw.js, сборка — scripts/build-web.js)
+    if (Platform.OS === 'web' && sameOrigin && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register(`${process.env.EXPO_BASE_URL ?? ''}/sw.js`).catch(e => {
+        console.warn('[SW] register failed:', e)
+      })
+    }
     initApiHost()
+      .then(initOffline)
       .then(() => {
         console.log('[API] host loaded:', getApiBase())
         setReady(true)

@@ -13,8 +13,21 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { login, setApiHost } from '../constants/api'
+import { hasTokens, login, sameOrigin, setApiHost } from '../constants/api'
 import { Colors } from '../constants/colors'
+import { isOfflineError, setOfflineUser } from '../constants/offline'
+
+// Отпечаток пароля для входа без сети (FNV-1a): сам пароль не храним, а
+// сверить, что вводят тот же, можно. Это замок на экране, не защита токенов —
+// они и так лежат на телефоне
+const passVerifier = (user: string, pass: string) => {
+  let h = 0x811c9dc5
+  for (const ch of `${user}\u0000${pass}`) {
+    h ^= ch.codePointAt(0)!
+    h = Math.imul(h, 0x01000193)
+  }
+  return (h >>> 0).toString(16)
+}
 
 export default function LoginScreen() {
   const [host,     setHost]     = useState('')
@@ -27,11 +40,13 @@ export default function LoginScreen() {
 
   const userRef = useRef<TextInput>(null)
   const passRef = useRef<TextInput>(null)
+  const savedUser = useRef('')
 
   useEffect(() => {
     AsyncStorage.multiGet(['apiHost', 'authUsername', 'savedPassword', 'rememberMe'])
       .then(pairs => {
         const saved = Object.fromEntries(pairs.map(([k, v]) => [k, v ?? '']))
+        savedUser.current = saved.authUsername
         if (saved.apiHost)      setHost(saved.apiHost)
         if (saved.authUsername) setUsername(saved.authUsername)
         if (saved.rememberMe === '1') {
@@ -41,7 +56,7 @@ export default function LoginScreen() {
       })
   }, [])
 
-  const isValid = host.trim() && username.trim() && password
+  const isValid = (sameOrigin || host.trim()) && username.trim() && password
 
   const handleLogin = async () => {
     if (!isValid || loading) return
@@ -49,11 +64,12 @@ export default function LoginScreen() {
     setLoading(true)
     setError(null)
 
-    const trimmedHost = host.trim()
+    const trimmedHost = sameOrigin ? window.location.host : host.trim()
     setApiHost(trimmedHost)
 
     try {
       const user = await login(username.trim(), password)
+      setOfflineUser(username.trim())
       await AsyncStorage.multiSet([
         ['apiHost',      trimmedHost],
         ['authUsername', username.trim()],
@@ -62,9 +78,23 @@ export default function LoginScreen() {
         ['scannerName',  user.displayName || user.username],
         ['rememberMe',   remember ? '1' : ''],
         ['savedPassword', remember ? password : ''],
+        ['offlineVerifier', passVerifier(username.trim(), password)],
       ])
       router.replace('/sessions')
     } catch (e: unknown) {
+      // Нет связи, но этот же логин уже входил с этим паролем и токены живы
+      // (refresh — 7 дней) — пускаем работать по сохранённым актам,
+      // очередь уйдёт, когда будет связь
+      const verifier = await AsyncStorage.getItem('offlineVerifier')
+      if (
+        isOfflineError(e) && hasTokens() &&
+        username.trim() === savedUser.current &&
+        verifier === passVerifier(username.trim(), password)
+      ) {
+        setOfflineUser(username.trim())
+        router.replace('/sessions')
+        return
+      }
       const err = e as { response?: { status?: number; data?: { message?: string } }; message?: string }
       if (err.response?.status === 401) {
         setError('Неверный логин или пароль')
@@ -94,24 +124,28 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>НИШ Өскемен</Text>
 
           <View style={styles.card}>
-            {/* IP */}
-            <Text style={styles.label}>🌐 Адрес сервера</Text>
-            <TextInput
-              style={styles.input}
-              value={host}
-              onChangeText={setHost}
-              placeholder="10.216.209.118:3000"
-              placeholderTextColor={Colors.text3}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              returnKeyType="next"
-              onSubmitEditing={() => userRef.current?.focus()}
-              blurOnSubmit={false}
-            />
-            <Text style={styles.hint}>Только IP и порт — без http:// и /api</Text>
+            {/* IP — веб-версии по HTTPS не нужен: сервер там же, где страница */}
+            {!sameOrigin && (
+              <>
+                <Text style={styles.label}>🌐 Адрес сервера</Text>
+                <TextInput
+                  style={styles.input}
+                  value={host}
+                  onChangeText={setHost}
+                  placeholder="10.216.209.118:3000"
+                  placeholderTextColor={Colors.text3}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  returnKeyType="next"
+                  onSubmitEditing={() => userRef.current?.focus()}
+                  blurOnSubmit={false}
+                />
+                <Text style={styles.hint}>Только IP и порт — без http:// и /api</Text>
 
-            <View style={styles.divider} />
+                <View style={styles.divider} />
+              </>
+            )}
 
             {/* Логин */}
             <Text style={styles.label}>👤 Логин</Text>

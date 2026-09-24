@@ -88,6 +88,13 @@ export default function SessionItemCard({ item, cancelling, onRelocate, onCancel
         </View>
       )}
 
+      {item.queued && (
+        <View style={styles.footer}>
+          <Feather name="wifi-off" size={11} color={Colors.warn} />
+          <Text style={[styles.scannedBy, { color: Colors.warn }]}>На телефоне — ждёт отправки</Text>
+        </View>
+      )}
+
       {item.status !== 'PENDING' && (
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.editBtn} onPress={() => onRelocate(item)}>

@@ -11,7 +11,8 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { clearTokens, logout, setApiHost } from '../constants/api'
+import { clearTokens, logout, sameOrigin, setApiHost } from '../constants/api'
+import { getOfflineState } from '../constants/offline'
 import { goBack } from '../constants/nav'
 import { confirmDialog, notify } from '../constants/dialog'
 import { downloadFile } from '../constants/download'
@@ -89,7 +90,8 @@ export default function SettingsScreen() {
     setPing(null)
     const start = Date.now()
     try {
-      await axios.get(`http://${trimmed}/api/info-tablo/houses`, { timeout: 6000 })
+      const base = sameOrigin ? window.location.origin : `http://${trimmed}`
+      await axios.get(`${base}/api/info-tablo/houses`, { timeout: 6000 })
       setPing({ ok: true, ms: Date.now() - start })
     } catch {
       setPing({ ok: false })
@@ -101,7 +103,9 @@ export default function SettingsScreen() {
 
   // Ссылка на страницу установки (/install бэкенда) — отправить коллеге
   const shareInstall = async () => {
-    const url = `http://${(origHost || host).trim()}/install`
+    const url = sameOrigin
+      ? `${window.location.origin}/install/`
+      : `http://${(origHost || host).trim()}/install`
     if (Platform.OS === 'web') {
       try {
         await navigator.clipboard.writeText(url)
@@ -148,7 +152,15 @@ export default function SettingsScreen() {
   }
 
   const handleLogout = async () => {
-    const ok = await confirmDialog('Выход', 'Выйти из аккаунта?', 'Выйти', { destructive: true })
+    const { queued } = getOfflineState()
+    const ok = await confirmDialog(
+      'Выход',
+      queued > 0
+        ? `На телефоне ${queued} неотправленных сканов и изменений. Они не пропадут и уйдут на сервер, когда вы снова войдёте под этим логином. Выйти?`
+        : 'Выйти из аккаунта?',
+      'Выйти',
+      { destructive: true },
+    )
     if (!ok) return
     await logout()
     await AsyncStorage.multiRemove(['scannerName', 'authRole'])
@@ -191,9 +203,10 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Text style={styles.label}>Адрес сервера</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, sameOrigin && { opacity: 0.6 }]}
             value={host}
             onChangeText={t => { setHost(t); setPing(null) }}
+            editable={!sameOrigin}
             placeholder="10.216.209.118:3000"
             placeholderTextColor={Colors.text3}
             autoCapitalize="none"
@@ -201,7 +214,9 @@ export default function SettingsScreen() {
             keyboardType="url"
           />
           <Text style={styles.hint}>
-            Только IP и порт — без http:// и /api.
+            {sameOrigin
+              ? 'Веб-версия работает с сервером, с которого открыта.'
+              : 'Только IP и порт — без http:// и /api.'}
             {hostChanged ? ' После смены адреса потребуется войти заново.' : ''}
           </Text>
 
@@ -217,17 +232,19 @@ export default function SettingsScreen() {
                 {pinging ? 'Проверяю…' : 'Проверить связь'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.saveBtn, (!host.trim() || saving) && { opacity: 0.4 }]}
-              onPress={handleSave}
-              disabled={!host.trim() || saving}
-              activeOpacity={0.8}
-            >
-              <Feather name="check" size={14} color={Colors.accent2} />
-              <Text style={styles.saveBtnText}>
-                {saving ? 'Сохраняю…' : 'Сохранить'}
-              </Text>
-            </TouchableOpacity>
+            {!sameOrigin && (
+              <TouchableOpacity
+                style={[styles.saveBtn, (!host.trim() || saving) && { opacity: 0.4 }]}
+                onPress={handleSave}
+                disabled={!host.trim() || saving}
+                activeOpacity={0.8}
+              >
+                <Feather name="check" size={14} color={Colors.accent2} />
+                <Text style={styles.saveBtnText}>
+                  {saving ? 'Сохраняю…' : 'Сохранить'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {ping && (
