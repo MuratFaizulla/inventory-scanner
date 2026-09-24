@@ -55,22 +55,6 @@ export const getHostBase = () => (sameOrigin ? window.location.origin : `http://
 // Синхронный геттер
 export const getApiBase = () => `${getHostBase()}/api`
 
-// Нет ответа, таймаут или nginx говорит «бэкенд запускается» — всё это
-// «нет связи»: операцию надо отложить, а не показывать ошибку
-export const isOfflineError = (e: unknown) =>
-  axios.isAxiosError(e) && (!e.response || [502, 503, 504].includes(e.response.status))
-
-// Текст ошибки для человека. Бэкенд отвечает { success:false, data:{ error } }
-// (http-exception.filter.ts); message на верхнем уровне — у ValidationPipe
-// и старых ручек вроде my-assets
-export const serverMessage = (e: unknown): string => {
-  if (!axios.isAxiosError(e)) return (e as Error)?.message || 'Ошибка'
-  if (!e.response) return 'Нет связи с сервером'
-  const d = e.response.data as { message?: string | string[]; data?: { error?: string } } | undefined
-  const msg = Array.isArray(d?.message) ? d.message.join(', ') : d?.message
-  return d?.data?.error || msg || `Сервер ответил ${e.response.status}`
-}
-
 // Подписка на «сессия истекла» — router в _layout возвращает на логин
 type ExpiredListener = () => void
 let expiredListener: ExpiredListener | null = null

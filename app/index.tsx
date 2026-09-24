@@ -13,7 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { hasTokens, isOfflineError, login, sameOrigin, setApiHost } from '../constants/api'
+import { hasTokens, login, sameOrigin, setApiHost } from '../constants/api'
+import { errorText, isOfflineError } from '../constants/errorText'
 import { Colors } from '../constants/colors'
 import { actsUserChanged } from '../constants/act'
 
@@ -95,14 +96,9 @@ export default function LoginScreen() {
         router.replace('/sessions')
         return
       }
-      const err = e as { response?: { status?: number; data?: { message?: string } }; message?: string }
-      if (err.response?.status === 401) {
-        setError('Неверный логин или пароль')
-      } else if (err.response?.status === 403) {
-        setError('Нет доступа — обратитесь к администратору')
-      } else {
-        setError(err.response?.data?.message ?? err.message ?? 'Сервер недоступен')
-      }
+      // Причину 401 называет бэкенд: неверный пароль или недоступен AD
+      const status = (e as { response?: { status?: number } }).response?.status
+      setError(status === 403 ? 'Нет доступа — обратитесь к администратору' : errorText(e))
     } finally {
       setLoading(false)
     }

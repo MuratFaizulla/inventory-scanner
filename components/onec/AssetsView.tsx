@@ -7,6 +7,7 @@ import {
 import api from '../../constants/api'
 import { notify } from '../../constants/dialog'
 import { downloadFile } from '../../constants/download'
+import { errorText } from '../../constants/errorText'
 import AssetDetailModal from './AssetDetailModal'
 import FilterSelect from './FilterSelect'
 import { assetMeta, InvAsset } from './inventory'
@@ -119,8 +120,8 @@ export default function AssetsView() {
         },
         format === 'zip' ? `act_${responsible}_${date}.zip` : `act_${responsible}_${date}.xlsx`,
       )
-    } catch {
-      notify('Ошибка', 'Не удалось сформировать акт')
+    } catch (e) {
+      notify('Не удалось сформировать акт', errorText(e))
     } finally {
       setExporting(false)
     }

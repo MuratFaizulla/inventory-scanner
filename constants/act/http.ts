@@ -2,7 +2,8 @@
 // Переводит ответы axios в язык модуля: нет связи → OfflineError, вход не
 // продлился → AuthError, отказ сервера → ServerError с текстом для человека.
 import axios from 'axios'
-import api, { getApiBase, isOfflineError, serverMessage } from '../api'
+import api, { getApiBase } from '../api'
+import { errorText, isOfflineError } from '../errorText'
 import {
   type ActDetail, type ActServer, type ActSummary, type OpPatch, type RawItem, type ServerScan,
   AuthError, OfflineError, ServerError,
@@ -17,10 +18,10 @@ async function call<T>(request: () => Promise<{ data: { data: T } }>): Promise<T
   try {
     return (await request()).data.data
   } catch (e) {
-    if (isOfflineError(e)) throw new OfflineError(serverMessage(e))
+    if (isOfflineError(e)) throw new OfflineError(errorText(e))
     // 401 доходит сюда, только если interceptor не смог продлить вход
-    if (axios.isAxiosError(e) && e.response?.status === 401) throw new AuthError(serverMessage(e))
-    if (axios.isAxiosError(e) && e.response) throw new ServerError(e.response.status, serverMessage(e))
+    if (axios.isAxiosError(e) && e.response?.status === 401) throw new AuthError(errorText(e))
+    if (axios.isAxiosError(e) && e.response) throw new ServerError(e.response.status, errorText(e))
     throw e
   }
 }
@@ -59,7 +60,7 @@ export const httpServer: ActServer = {
         validateStatus: s => s < 502,
       })
     } catch (e) {
-      throw new OfflineError(serverMessage(e))
+      throw new OfflineError(errorText(e))
     }
   },
 }

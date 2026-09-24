@@ -8,6 +8,7 @@ import { useAct } from '../../constants/act'
 import { Colors } from '../../constants/colors'
 import { goBack } from '../../constants/nav'
 import { confirmDialog, notify } from '../../constants/dialog'
+import { errorText } from '../../constants/errorText'
 
 import RelocateModal from '../../components/RelocateModal'
 import SyncBanner from '../../components/SyncBanner'
@@ -68,7 +69,7 @@ export default function SessionDetailScreen() {
     try {
       await act.cancel(item.id)
     } catch (e: unknown) {
-      notify('Ошибка', (e as Error).message || 'Не удалось отменить')
+      notify('Не удалось отменить скан', errorText(e))
     } finally {
       setCancelling(null)
     }

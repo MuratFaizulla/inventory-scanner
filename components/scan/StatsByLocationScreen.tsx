@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import { getStatsByLocation } from '../../constants/sessionsApi'
 import { Colors } from '../../constants/colors'
+import { errorText } from '../../constants/errorText'
 
 // ── Типы ─────────────────────────────────────────────────────────────────────
 
@@ -121,14 +122,16 @@ export default function StatsByLocationScreen({ sessionId, onBack }: Props) {
   const [loading,        setLoading]        = useState(true)
   const [refreshing,     setRefreshing]     = useState(false)
   const [locationSearch, setLocationSearch] = useState('')
+  const [error,          setError]          = useState<string | null>(null)
 
   const fetchStats = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
     try {
       setStats(await getStatsByLocation(sessionId))
+      setError(null)
     } catch (e) {
-      console.error(e)
+      setError(errorText(e))
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -223,7 +226,7 @@ export default function StatsByLocationScreen({ sessionId, onBack }: Props) {
           {/* Список */}
           {filteredStats.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyText}>Ничего не найдено</Text>
+              <Text style={styles.emptyText}>{error ?? 'Ничего не найдено'}</Text>
             </View>
           ) : (
             <FlatList
@@ -461,7 +464,7 @@ const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: Colors.bg },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 14, color: Colors.text3, marginTop: 8 },
-  emptyText:   { fontSize: 14, color: Colors.text3 },
+  emptyText:   { fontSize: 14, color: Colors.text3, textAlign: 'center', paddingHorizontal: 24 },
 
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

@@ -10,6 +10,7 @@ import {
 import type { ActSummary } from '../../constants/act'
 import { Colors } from '../../constants/colors'
 import { notify } from '../../constants/dialog'
+import { errorText } from '../../constants/errorText'
 import FilterSelect from '../onec/FilterSelect'
 
 // Модалка создания акта — как SessionCreateModal.jsx в вебе:
@@ -87,8 +88,7 @@ export default function CreateSessionModal({ visible, scannerName, onClose, onCr
       reset()
       onCreated(session)
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } }
-      notify('Ошибка', err.response?.data?.message ?? 'Не удалось создать акт')
+      notify('Не удалось создать акт', errorText(e))
     } finally {
       setBusy(false)
     }

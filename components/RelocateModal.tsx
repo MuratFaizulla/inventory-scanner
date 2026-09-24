@@ -13,6 +13,7 @@ import {
 import type { Act, ActItem } from '../constants/act'
 import { Colors } from '../constants/colors'
 import { notify } from '../constants/dialog'
+import { errorText } from '../constants/errorText'
 import { getEmployees, getLocations } from '../constants/sessionsApi'
 
 // '' — не меняем. Сотрудник либо выбран из списка, либо вписан: не оба сразу
@@ -112,7 +113,7 @@ function RelocateForm({ act, item, locations, employees, onClose, onSaved }: For
       onSaved?.()
     } catch (e) {
       // Модуль акта отдаёт текст для человека: отказ сервера или «нет копии»
-      notify('Ошибка', (e as Error).message || 'Не удалось сохранить')
+      notify('Не удалось сохранить', errorText(e))
       setSaving(false)
     }
   }

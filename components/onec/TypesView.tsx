@@ -7,6 +7,7 @@ import {
 } from 'react-native'
 import api from '../../constants/api'
 import { confirmDialog, notify } from '../../constants/dialog'
+import { errorText } from '../../constants/errorText'
 import AssetDetailModal from './AssetDetailModal'
 import FilterSelect from './FilterSelect'
 import { assetMeta, AssetType, InvAsset, photoUri, TypeDetail } from './inventory'
@@ -140,8 +141,8 @@ function TypeDetailModal({ name, tab, ver, onClose, onPhotoChanged }: {
       })
       onPhotoChanged()
       load()
-    } catch {
-      notify('Ошибка', 'Не удалось загрузить фото')
+    } catch (e) {
+      notify('Не удалось загрузить фото', errorText(e))
     } finally {
       setPhotoBusy(false)
     }
@@ -162,8 +163,8 @@ function TypeDetailModal({ name, tab, ver, onClose, onPhotoChanged }: {
       await api.delete(`/inventory/asset/${withPhoto.id}/photo`, { params: { tab } })
       onPhotoChanged()
       load()
-    } catch {
-      notify('Ошибка', 'Не удалось удалить фото')
+    } catch (e) {
+      notify('Не удалось удалить фото', errorText(e))
     } finally {
       setPhotoBusy(false)
     }

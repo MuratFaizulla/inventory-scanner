@@ -7,6 +7,7 @@ import {
 } from 'react-native'
 import { Colors } from '../../constants/colors'
 import { confirmDialog, notify } from '../../constants/dialog'
+import { errorText } from '../../constants/errorText'
 import { acts, type ActSummary } from '../../constants/act'
 import { sessionAction } from '../../constants/sessionsApi'
 import CreateSessionModal from './CreateSessionModal'
@@ -33,8 +34,8 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
     try {
       // Запущенные акты модуль заодно сохраняет на телефон — для работы без Wi-Fi
       setSessions(await acts.list())
-    } catch {
-      notify('Ошибка', 'Не удалось загрузить акты инвентаризации')
+    } catch (e) {
+      notify('Не удалось загрузить акты', errorText(e))
     } finally {
       setLoading(false)
     }
@@ -51,8 +52,7 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
       await sessionAction(session.id, action)
       await load()
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } }
-      notify('Ошибка', err.response?.data?.message ?? 'Не удалось выполнить действие')
+      notify('Не удалось выполнить действие', errorText(e))
     } finally {
       setActing(null)
     }

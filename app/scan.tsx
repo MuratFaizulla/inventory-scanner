@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
 import { confirmDialog, notify } from '../constants/dialog'
+import { errorText } from '../constants/errorText'
 import { goBack } from '../constants/nav'
 import { useAct, type ActItem } from '../constants/act'
 
@@ -130,7 +131,7 @@ export default function ScanScreen() {
       addToHistory(code, status, name)
     } catch (e) {
       // Модуль акта отдаёт текст для человека: отказ сервера или «нет копии»
-      setResult({ status: 'NOT_FOUND', message: (e as Error).message || 'Ошибка сервера' })
+      setResult({ status: 'NOT_FOUND', message: errorText(e) })
     } finally {
       setSubmitting(false)
     }
@@ -181,7 +182,7 @@ export default function ScanScreen() {
       await act.cancel(result.item.id)
       handleNext()
     } catch (e) {
-      notify('Ошибка', (e as Error).message || 'Не удалось отменить')
+      notify('Не удалось отменить скан', errorText(e))
     } finally {
       setCancelling(false)
     }

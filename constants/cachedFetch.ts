@@ -1,7 +1,7 @@
 // Запрос со страховкой для справочников (кабинеты, сотрудники): удалось —
 // обновили копию на телефоне, нет связи — отдали копию. Акты живут в своём
 // модуле (constants/act), здесь — только то, что без сети нужно лишь читать.
-import { isOfflineError } from './api'
+import { isOfflineError } from './errorText'
 import { localStore } from './localStore'
 
 const memo = new Map<string, unknown>()

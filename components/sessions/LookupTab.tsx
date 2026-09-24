@@ -7,6 +7,7 @@ import {
 } from 'react-native'
 import { lookupAsset } from '../../constants/sessionsApi'
 import { Colors } from '../../constants/colors'
+import { errorText } from '../../constants/errorText'
 import CameraScanner from '../scan/CameraScanner'
 import LookupResultCard from './LookupResultCard'
 import type { LookupResult } from './types'
@@ -37,8 +38,7 @@ export default function LookupTab() {
       setResult(found)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setError(msg ?? 'ОС не найдена')
+      setError(errorText(e))
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
     } finally {
       setLoading(false)

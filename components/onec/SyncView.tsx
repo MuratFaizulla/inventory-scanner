@@ -5,6 +5,7 @@ import {
   Text, TouchableOpacity, View,
 } from 'react-native'
 import api from '../../constants/api'
+import { errorText } from '../../constants/errorText'
 import {
   ChangesResponse, FIELD_LABELS, formatDate,
   SyncChange, SyncStatus, T,
@@ -232,8 +233,7 @@ export default function SyncView() {
       setRunning(res.data.data?.running ?? false)
       await loadChanges()
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: string } } })
-        ?.response?.data?.message ?? 'Ошибка запуска'
+      const msg = errorText(e)
       setStatus(s => (s ? { ...s, lastError: msg } : s))
       setRunning(false)
     }

@@ -5,6 +5,7 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native'
 import api from '../../constants/api'
+import { errorText } from '../../constants/errorText'
 import AssetDetailModal from './AssetDetailModal'
 import { assetMeta, InvAsset, photoUri } from './inventory'
 import { AssetTable, T } from './types'
@@ -29,7 +30,7 @@ export default function MyAssetsView() {
         setFixed(r.data.fixedAssets || r.data.assets || [])
         setLibrary(r.data.libraryAssets || [])
       })
-      .catch(() => setError('Не удалось загрузить'))
+      .catch(e => setError(errorText(e)))
       .finally(() => setLoading(false))
   }, [])
 

@@ -16,6 +16,7 @@ import { acts } from '../constants/act'
 import { goBack } from '../constants/nav'
 import { confirmDialog, notify } from '../constants/dialog'
 import { downloadFile } from '../constants/download'
+import { errorText } from '../constants/errorText'
 import { Colors } from '../constants/colors'
 import SyncView from '../components/onec/SyncView'
 
@@ -131,8 +132,8 @@ export default function SettingsScreen() {
         { format },
         format === 'zip' ? `act_po_kabinetam_${date}.zip` : `act_${date}.xlsx`,
       )
-    } catch {
-      notify('Ошибка', 'Не удалось сформировать акт')
+    } catch (e) {
+      notify('Не удалось сформировать акт', errorText(e))
     } finally {
       setExporting(false)
     }
