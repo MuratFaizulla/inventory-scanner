@@ -2,7 +2,7 @@
   "expo": {
     "name": "1C NIS",
     "slug": "inventory-scanner",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon-zhapirak.png",
     "scheme": "inventoryscanner",
@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.muratfaizulla.inventoryscanner",
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon-zhapirak-adaptive.png",
         "backgroundColor": "#0f172a"
