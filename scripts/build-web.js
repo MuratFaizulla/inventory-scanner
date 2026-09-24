@@ -20,7 +20,10 @@ const OUT = path.join(os.tmpdir(), 'inventory-scanner-web')
 const DIST = path.join(root, 'dist')
 
 fs.rmSync(OUT, { recursive: true, force: true })
-execSync(`npx expo export -p web --output-dir "${OUT}"`, {
+// --clear: кэш Metro общий с git worktree (node_modules там — junction сюда),
+// и без него в бандл может попасть список экранов из чужой папки →
+// «No routes found» вместо приложения
+execSync(`npx expo export -p web --clear --output-dir "${OUT}"`, {
   cwd: root,
   stdio: 'inherit',
   env: { ...process.env, CI: '1', EXPO_NO_TELEMETRY: '1' },
