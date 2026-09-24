@@ -8,15 +8,14 @@ import { useAct } from '../../constants/act'
 import { Colors } from '../../constants/colors'
 import { goBack } from '../../constants/nav'
 import { confirmDialog, notify } from '../../constants/dialog'
-import { getEmployeeOptions, getLocationOptions } from '../../constants/sessionsApi'
 
+import RelocateModal from '../../components/RelocateModal'
 import SyncBanner from '../../components/SyncBanner'
 import SessionHeader from '../../components/session/SessionHeader'
 import SessionItemCard from '../../components/session/SessionItemCard'
-import SessionRelocateModal from '../../components/session/SessionRelocateModal'
 import SessionTabs from '../../components/session/SessionTabs'
 
-import { tabOf, type Employee, type Item, type Location, type SessionDetail, type TabType } from '../../components/session/types'
+import { tabOf, type Item, type SessionDetail, type TabType } from '../../components/session/types'
 
 export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -26,8 +25,6 @@ export default function SessionDetailScreen() {
   const isFocused = useIsFocused()
   const { act, view, error, refresh } = useAct(Number(id), { live: isFocused })
   const [activeTab, setActiveTab] = useState<TabType | null>(null)
-  const [locations, setLocations] = useState<Location[]>([])
-  const [employees, setEmployees] = useState<Employee[]>([])
 
   const session = useMemo<SessionDetail | null>(() => {
     if (!view) return null
@@ -52,69 +49,11 @@ export default function SessionDetailScreen() {
     setActiveTab(session.misplaced ? 'MISPLACED' : session.notFound ? 'NOT_FOUND' : 'FOUND')
   }, [session, activeTab])
 
-  // ── Relocate ──────────────────────────────────────────────────────────────────
-  const [relocateItem,       setRelocateItem]       = useState<Item | null>(null)
-  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null)
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null)
-  const [employeeNote,       setEmployeeNote]       = useState('')
-  const [relocating,         setRelocating]         = useState(false)
-  const [modalTab,           setModalTab]           = useState<'location' | 'employee'>('location')
-  const [search,             setSearch]             = useState('')
+  // ── Перемещение: позиция, открытая в модалке ─────────────────────────────────
+  const [relocateItem, setRelocateItem] = useState<Item | null>(null)
 
   // ── Cancel ────────────────────────────────────────────────────────────────────
   const [cancelling, setCancelling] = useState<number | null>(null)
-
-  useEffect(() => {
-    getLocationOptions().then(setLocations).catch(() => {})
-    getEmployeeOptions().then(setEmployees).catch(() => {})
-  }, [])
-
-  // ── Relocate ──────────────────────────────────────────────────────────────────
-  const openRelocate = (item: Item) => {
-    setRelocateItem(item)
-    setSelectedLocationId(null)
-    setSelectedEmployeeId(null)
-    setEmployeeNote('')
-    setModalTab('location')
-    setSearch('')
-  }
-
-  const closeRelocate = () => {
-    setRelocateItem(null)
-    setSelectedLocationId(null)
-    setSelectedEmployeeId(null)
-    setEmployeeNote('')
-    setSearch('')
-  }
-
-  const handleRelocate = async () => {
-    if (!relocateItem) return
-    if (!selectedLocationId && !selectedEmployeeId) {
-      notify('Выберите', 'Выберите кабинет или сотрудника')
-      return
-    }
-    setRelocating(true)
-    try {
-      const loc = locations.find(l => l.id === selectedLocationId)
-      const emp = employees.find(e => e.id === selectedEmployeeId)
-      const { queued } = await act.relocate(relocateItem.id, {
-        ...(loc && { location: loc.name }),
-        ...(emp && { employee: emp.fullName }),
-      })
-      const msg = [
-        loc && `Кабинет: ${loc.name}`,
-        emp && `Сотрудник: ${emp.fullName}`,
-        employeeNote.trim() && `Комментарий: ${employeeNote.trim()}`,
-        queued && '📴 Сохранено на телефоне — уйдёт, когда появится связь',
-      ].filter(Boolean).join('\n')
-      closeRelocate()
-      notify('✅ Готово', msg)
-    } catch (e: unknown) {
-      notify('Ошибка', (e as Error).message || 'Не удалось сохранить')
-    } finally {
-      setRelocating(false)
-    }
-  }
 
   // ── Cancel scan ───────────────────────────────────────────────────────────────
   const handleCancelScan = async (item: Item) => {
@@ -197,30 +136,13 @@ export default function SessionDetailScreen() {
           <SessionItemCard
             item={item}
             cancelling={cancelling}
-            onRelocate={openRelocate}
+            onRelocate={setRelocateItem}
             onCancel={handleCancelScan}
           />
         )}
       />
 
-      <SessionRelocateModal
-        item={relocateItem}
-        locations={locations}
-        employees={employees}
-        selectedLocationId={selectedLocationId}
-        selectedEmployeeId={selectedEmployeeId}
-        employeeNote={employeeNote}
-        relocating={relocating}
-        modalTab={modalTab}
-        search={search}
-        onClose={closeRelocate}
-        onConfirm={handleRelocate}
-        onTabChange={tab => { setModalTab(tab); setSearch('') }}
-        onSearchChange={setSearch}
-        onSelectLocation={setSelectedLocationId}
-        onSelectEmployee={setSelectedEmployeeId}
-        onNoteChange={setEmployeeNote}
-      />
+      <RelocateModal act={act} item={relocateItem} onClose={() => setRelocateItem(null)} />
     </View>
   )
 }

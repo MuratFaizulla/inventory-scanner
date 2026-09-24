@@ -6,26 +6,22 @@ import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Keyboard, KeyboardAvoidingView,
-  Platform, StyleSheet, Text, TouchableOpacity,
-  useWindowDimensions, View,
+  KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
 import { confirmDialog, notify } from '../constants/dialog'
 import { goBack } from '../constants/nav'
-import { useAct } from '../constants/act'
-import { getEmployeeOptions, getLocationOptions } from '../constants/sessionsApi'
+import { useAct, type ActItem } from '../constants/act'
 
+import RelocateModal from '../components/RelocateModal'
 import SyncBanner from '../components/SyncBanner'
 import CameraScanner from '../components/scan/CameraScanner'
 import HistoryScreen from '../components/scan/HistoryScreen'
 import ManualInput from '../components/scan/ManualInput'
-import RelocateModal from '../components/scan/RelocateModal'
 import ScanHeader from '../components/scan/ScanHeader'
 import ScanResultCard from '../components/scan/ScanResultCard'
 import StatsByLocationScreen from '../components/scan/StatsByLocationScreen'
 
-import type { LastRelocate } from '../components/scan/RelocateModal'
-import type { Employee, HistoryItem, Location, ScanResult, ScanStatus } from '../components/scan/types'
+import type { HistoryItem, ScanResult, ScanStatus } from '../components/scan/types'
 
 let _seq = 0
 const uid = () => `${Date.now()}-${++_seq}`
@@ -34,7 +30,6 @@ export default function ScanScreen() {
   const { sessionId, sessionName } = useLocalSearchParams<{ sessionId: string; sessionName: string }>()
   const [permission, requestPermission] = useCameraPermissions()
   const router       = useRouter()
-  const { height: screenHeight } = useWindowDimensions()
   // Открытый акт модуль сразу сохраняет на телефон — дальше по кабинетам
   // сканировать можно и без Wi-Fi
   const { act } = useAct(Number(sessionId))
@@ -58,36 +53,14 @@ export default function ScanScreen() {
   const historyRef = useRef<HistoryItem[]>([])
   const [history, setHistory] = useState<HistoryItem[]>([])
 
-  // ── Relocate ──────────────────────────────────────────────────────────────────
-  const [locations,          setLocations]          = useState<Location[]>([])
-  const [employees,          setEmployees]          = useState<Employee[]>([])
-  const [showRelocate,       setShowRelocate]       = useState(false)
-  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null)
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null)
-  const [employeeNote,       setEmployeeNote]       = useState('')
-  const [relocating,         setRelocating]         = useState(false)
-  const [modalTab,           setModalTab]           = useState<'location' | 'employee'>('location')
-  const [relocateSearch,     setRelocateSearch]     = useState('')
-
-  // ── Последнее перемещение — запоминаем для быстрого применения ───────────────
-  const [lastRelocate, setLastRelocate] = useState<LastRelocate | null>(null)
+  // ── Перемещение: позиция, открытая в модалке ─────────────────────────────────
+  const [relocateItem, setRelocateItem] = useState<ActItem | null>(null)
 
   // ── Cancel ────────────────────────────────────────────────────────────────────
   const [cancelling, setCancelling] = useState(false)
 
-  // ── Клавиатура ────────────────────────────────────────────────────────────────
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
-
-  useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', e => setKeyboardHeight(e.endCoordinates.height))
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0))
-    return () => { show.remove(); hide.remove() }
-  }, [])
-
   useEffect(() => {
     AsyncStorage.getItem('scannerName').then(n => setScannerName(n || ''))
-    getLocationOptions().then(setLocations).catch(() => {})
-    getEmployeeOptions().then(setEmployees).catch(() => {})
   }, [])
 
   // ── История ───────────────────────────────────────────────────────────────────
@@ -183,78 +156,15 @@ export default function ScanScreen() {
   const handleNext = () => {
     setResult(null)
     setShowManual(false)
-    setShowRelocate(false)
-    resetRelocate()
+    setRelocateItem(null)
     setTimeout(() => {
       cooldown.current    = false
       lastBarcode.current = null
     }, 600)
   }
 
-  // ── Relocate ──────────────────────────────────────────────────────────────────
-  const resetRelocate = () => {
-    setSelectedLocationId(null)
-    setSelectedEmployeeId(null)
-    setEmployeeNote('')
-    setRelocateSearch('')
-  }
-
-  const openRelocate = () => {
-    resetRelocate()
-    setModalTab('location')
-    setShowRelocate(true)
-  }
-
-  // Применить предыдущее перемещение одной кнопкой
-  const handleApplyLast = () => {
-    if (!lastRelocate) return
-    setSelectedLocationId(lastRelocate.locationId)
-    setSelectedEmployeeId(lastRelocate.employeeId)
-    setEmployeeNote(lastRelocate.employeeNote)
-  }
-
-  const handleRelocate = async () => {
-    if (!result?.item) return
-    if (!selectedLocationId && !selectedEmployeeId) {
-      notify('Выберите', 'Выберите кабинет или сотрудника')
-      return
-    }
-    setRelocating(true)
-    try {
-      const loc = locations.find(l => l.id === selectedLocationId)
-      const emp = employees.find(e => e.id === selectedEmployeeId)
-
-      const { queued } = await act.relocate(result.item.id, {
-        ...(loc && { location: loc.name }),
-        ...(emp && { employee: emp.fullName }),
-      })
-
-      // ── Сохраняем как "последнее перемещение" ──────────────────────────────
-      setLastRelocate({
-        locationId:   selectedLocationId,
-        employeeId:   selectedEmployeeId,
-        employeeNote: employeeNote.trim(),
-        locationName: loc?.name || '',
-        employeeName: emp?.fullName || '',
-      })
-
-      const msg = [
-        loc && `Кабинет: ${loc.name}`,
-        emp && `Сотрудник: ${emp.fullName}`,
-        employeeNote.trim() && `Комментарий: ${employeeNote.trim()}`,
-        queued && '📴 Сохранено на телефоне — уйдёт, когда появится связь',
-      ].filter(Boolean).join('\n')
-
-      setShowRelocate(false)
-      resetRelocate()
-      notify('✅ Готово', msg)
-      handleNext()
-    } catch (e) {
-      notify('Ошибка', (e as Error).message || 'Не удалось переместить')
-    } finally {
-      setRelocating(false)
-    }
-  }
+  // ── Перемещение ───────────────────────────────────────────────────────────────
+  const openRelocate = () => setRelocateItem(result?.item ?? null)
 
   // ── Cancel scan ───────────────────────────────────────────────────────────────
   const handleCancelScan = async () => {
@@ -351,27 +261,10 @@ export default function ScanScreen() {
       ) : null}
 
       <RelocateModal
-        visible={showRelocate}
-        item={result?.item}
-        locations={locations}
-        employees={employees}
-        selectedLocationId={selectedLocationId}
-        selectedEmployeeId={selectedEmployeeId}
-        employeeNote={employeeNote}
-        relocating={relocating}
-        modalTab={modalTab}
-        search={relocateSearch}
-        keyboardHeight={keyboardHeight}
-        screenHeight={screenHeight}
-        lastRelocate={lastRelocate}
-        onClose={() => { setShowRelocate(false); resetRelocate() }}
-        onConfirm={handleRelocate}
-        onTabChange={tab => { setModalTab(tab); setRelocateSearch('') }}
-        onSearchChange={setRelocateSearch}
-        onSelectLocation={setSelectedLocationId}
-        onSelectEmployee={setSelectedEmployeeId}
-        onNoteChange={setEmployeeNote}
-        onApplyLast={handleApplyLast}
+        act={act}
+        item={relocateItem}
+        onClose={() => setRelocateItem(null)}
+        onSaved={handleNext}
       />
     </KeyboardAvoidingView>
   )

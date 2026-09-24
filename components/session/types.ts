@@ -26,13 +26,3 @@ export interface SessionDetail {
   total:     number
   items:     Item[]
 }
-
-export interface Location {
-  id:   number
-  name: string
-}
-
-export interface Employee {
-  id:       number
-  fullName: string
-}

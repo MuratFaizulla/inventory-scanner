@@ -48,23 +48,23 @@ export const previewSession = async (opts: {
   return res.data.data as { total: number }
 }
 
-// ── Справочники для RelocateModal (UI ждёт {id,name} / {id,fullName}) ───────
+// ── Справочники для перемещения: названия кабинетов и ФИО сотрудников ─────────
 
-export const getLocationOptions = async (): Promise<{ id: number; name: string }[]> => {
-  const names = await cachedFetch<string[]>('locations', async () => {
+// Пустые и повторы убираем: выбор в модалке идёт по названию
+const uniqueNames = (names: (string | null)[]) =>
+  [...new Set(names.map(n => n?.trim()).filter((n): n is string => !!n))]
+
+export const getLocations = async (): Promise<string[]> =>
+  uniqueNames(await cachedFetch<string[]>('locations', async () => {
     const res = await api.get('/inventory/locations', { timeout: READ_TIMEOUT })
     return res.data.data ?? []
-  })
-  return names.map((name, i) => ({ id: i + 1, name }))
-}
+  }))
 
-export const getEmployeeOptions = async (): Promise<{ id: number; fullName: string }[]> => {
-  const names = await cachedFetch<string[]>('employees', async () => {
+export const getEmployees = async (): Promise<string[]> =>
+  uniqueNames(await cachedFetch<string[]>('employees', async () => {
     const res = await api.get('/inventory/names', { timeout: READ_TIMEOUT })
     return res.data.data?.responsible ?? []
-  })
-  return names.map((fullName, i) => ({ id: i + 1, fullName }))
-}
+  }))
 
 // ── Статистика по кабинетам (считаем из позиций акта) ────────────────────────
 

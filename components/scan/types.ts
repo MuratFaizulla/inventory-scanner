@@ -20,13 +20,3 @@ export type HistoryItem = {
   name:    string
   time:    string
 }
-
-export type Location = {
-  id:   number
-  name: string
-}
-
-export type Employee = {
-  id:       number
-  fullName: string
-}
