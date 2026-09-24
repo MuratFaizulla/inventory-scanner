@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  FlatList, Modal, RefreshControl, StyleSheet,
+  ActivityIndicator, FlatList, Modal, RefreshControl, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native'
 import { Colors } from '../../constants/colors'
@@ -45,7 +45,7 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
 
   const doAction = async (
     session: ActSummary,
-    action: 'start' | 'pause' | 'resume' | 'complete' | 'cancel',
+    action: 'start' | 'pause' | 'resume' | 'cancel',
   ) => {
     setActing(session.id)
     try {
@@ -58,19 +58,37 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
     }
   }
 
-  const confirmAction = async (
-    session: ActSummary,
-    action: 'complete' | 'cancel',
-  ) => {
-    const texts = {
-      complete: { title: 'Завершить акт?', msg: 'Непроверенные ОС получат статус «Не найдено»' },
-      cancel:   { title: 'Отменить акт?',  msg: 'Акт будет закрыт без результатов' },
-    }
+  const confirmCancel = async (session: ActSummary) => {
     const ok = await confirmDialog(
-      texts[action].title, texts[action].msg, 'Да',
+      'Отменить акт?', 'Акт будет закрыт без результатов', 'Да',
       { cancelText: 'Нет', destructive: true },
     )
-    if (ok) await doAction(session, action)
+    if (ok) await doAction(session, 'cancel')
+  }
+
+  // Завершение — через модуль акта: сначала уходят сканы с телефона,
+  // затем сразу итог — что не нашли, излишки, перемещения
+  const complete = async (session: ActSummary) => {
+    const act = acts.open(session.id)
+    // Копия с очередью точнее списка: в ней и сканы, сделанные без связи
+    const pending = act.view()?.counts.pending ?? (session.total ?? 0) - (session.scanned ?? 0)
+    const ok = await confirmDialog(
+      'Завершить акт?',
+      pending > 0 ? `Не проверено ОС: ${pending} — они получат статус «Не найдено».` : 'Все ОС проверены.',
+      'Завершить',
+      { cancelText: 'Нет', destructive: pending > 0 },
+    )
+    if (!ok) return
+    setActing(session.id)
+    try {
+      await act.complete()
+      router.push({ pathname: '/result/[id]', params: { id: session.id } })
+      void load()
+    } catch (e: unknown) {
+      notify('Не удалось завершить акт', errorText(e))
+    } finally {
+      setActing(null)
+    }
   }
 
   const fmtDate = (d: string | null) =>
@@ -128,7 +146,7 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
               <TouchableOpacity
                 style={s.detailBtn}
                 disabled={busy}
-                onPress={() => confirmAction(item, 'cancel')}
+                onPress={() => confirmCancel(item)}
               >
                 <Text style={s.detailBtnText}>✕ Отменить</Text>
               </TouchableOpacity>
@@ -160,7 +178,9 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
                 disabled={busy}
                 onPress={() => setMenuFor(item)}
               >
-                <Feather name="more-vertical" size={16} color={Colors.text2} />
+                {busy
+                  ? <ActivityIndicator size="small" color={Colors.text2} />
+                  : <Feather name="more-vertical" size={16} color={Colors.text2} />}
               </TouchableOpacity>
             </>
           )}
@@ -184,6 +204,15 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
                 <Text style={s.detailBtnText}>📋 Детали</Text>
               </TouchableOpacity>
             </>
+          )}
+
+          {item.status === 'completed' && (
+            <TouchableOpacity
+              style={s.scanBtn}
+              onPress={() => router.push({ pathname: '/result/[id]', params: { id: item.id } })}
+            >
+              <Text style={s.scanBtnText}>📊 Итог</Text>
+            </TouchableOpacity>
           )}
 
           {(item.status === 'completed' || item.status === 'cancelled') && (
@@ -273,7 +302,7 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
 
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => { const it = menuFor!; setMenuFor(null); confirmAction(it, 'complete') }}
+              onPress={() => { const it = menuFor!; setMenuFor(null); void complete(it) }}
             >
               <Feather name="check-circle" size={17} color={Colors.accent2} />
               <Text style={styles.menuItemText}>Завершить</Text>
@@ -281,7 +310,7 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
 
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => { const it = menuFor!; setMenuFor(null); confirmAction(it, 'cancel') }}
+              onPress={() => { const it = menuFor!; setMenuFor(null); confirmCancel(it) }}
             >
               <Feather name="x-circle" size={17} color={Colors.danger} />
               <Text style={[styles.menuItemText, { color: Colors.danger }]}>Отменить акт</Text>

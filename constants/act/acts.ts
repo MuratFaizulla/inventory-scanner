@@ -6,12 +6,15 @@
 // React Native модуль не знает: сервер и хранилище подаются снаружи. В проде
 // это адаптеры из http.ts и index.ts, в тестах (acts.test.mjs) — в памяти.
 import {
-  type ActCounts, type ActItem, type FailedOp, type ItemStatus, type Op, type OpPatch, type RawItem,
-  countItems, findByCode, itemCode, predictScan, removeItem, replay, toActItem,
+  type ActCounts, type ActItem, type Discrepancy, type DiscrepancyKind, type FailedOp, type FieldChange,
+  type ItemStatus, type Op, type OpPatch, type RawItem,
+  countItems, discrepanciesOf, findByCode, itemCode, predictScan, removeItem, replay, toActItem,
   upsertItem, withoutQueuedScan,
 } from './rules.ts'
 
-export type { ActCounts, ActItem, FailedOp, ItemStatus, OpPatch, RawItem }
+export type {
+  ActCounts, ActItem, Discrepancy, DiscrepancyKind, FailedOp, FieldChange, ItemStatus, OpPatch, RawItem,
+}
 
 // ── Шов: сервер ─────────────────────────────────────────────────────────────
 
@@ -60,6 +63,8 @@ export interface ActServer {
   scan(actId: number, code: string, scannedAt?: string): Promise<ServerScan>
   update(actId: number, itemId: number, patch: OpPatch): Promise<RawItem>
   unscan(actId: number, itemId: number): Promise<{ deleted: boolean; item?: RawItem }>
+  /** Непроверенные позиции сервер переводит в «не найдено» */
+  complete(actId: number): Promise<ActSummary>
   /** Есть ли связь: любой ответ сервера — да */
   ping(): Promise<void>
 }
@@ -77,6 +82,8 @@ export interface ActView {
   act: ActSummary
   items: ActItem[]
   counts: ActCounts
+  /** Итог акта: что поправить в 1С — по тому же правилу, что в портале */
+  discrepancies: Discrepancy[]
 }
 
 export type ScanOutcome =
@@ -95,6 +102,11 @@ export interface Act {
   scan(code: string): Promise<ScanOutcome>
   relocate(itemId: number, patch: OpPatch): Promise<{ queued: boolean }>
   cancel(itemId: number): Promise<void>
+  /**
+   * Завершить акт — только со связью и после досылки очереди акта: сервер
+   * потом не примет сканы, а непроверенные ОС станут «не найдено»
+   */
+  complete(): Promise<ActView>
   subscribe(listener: () => void): () => void
 }
 
@@ -137,6 +149,10 @@ const NO_COPY = 'Нет связи с сервером, а этот акт не 
 const NO_LIST = 'Нет связи с сервером, а список актов ещё не сохранён на телефоне.'
 const NOT_RUNNING = 'Сканировать можно только в запущенном акте'
 const NO_ITEM = 'Позиция не найдена в копии акта'
+const NO_LINK_COMPLETE = 'Нет связи с сервером — завершить акт можно только при подключении.'
+const unsent = (n: number) =>
+  `Сканы и правки этого акта ещё на телефоне (${n}). Дождитесь, пока они уйдут на сервер, ` +
+  'и завершите снова — иначе сервер их не примет, а эти ОС станут «Не найдено».'
 
 // Операция из первой версии оффлайна: акт назывался sessionId
 type StoredOp = Op & { sessionId?: number }
@@ -275,8 +291,9 @@ export function createActs(deps: {
       const detail = await loadCopy(actId)
       if (!detail) return
       const { items: _raw, ...act } = detail
-      const items = replay(detail.items ?? [], pendingFor(actId)).map(toActItem)
-      current = { act, items, counts: countItems(items) }
+      const raw = replay(detail.items ?? [], pendingFor(actId))
+      const items = raw.map(toActItem)
+      current = { act, items, counts: countItems(items), discrepancies: discrepanciesOf(raw) }
       listeners.forEach(l => l())
     }
 
@@ -366,6 +383,16 @@ export function createActs(deps: {
           kind: 'unscan', actId, code: itemCode(it),
           itemId: itemId > 0 ? itemId : null, at: now().toISOString(),
         })
+      },
+
+      async complete() {
+        await syncNow()
+        const left = pendingFor(actId).length
+        if (left) throw new Error(unsent(left))
+        if ((await attempt(() => server.complete(actId))) === OFFLINE) {
+          throw new OfflineError(NO_LINK_COMPLETE)
+        }
+        return act.refresh()
       },
 
       subscribe(listener) {

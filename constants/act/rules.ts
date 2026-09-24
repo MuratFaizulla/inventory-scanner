@@ -228,6 +228,68 @@ export const toActItem = (r: RawItem): ActItem => ({
   queued: !!r.queued,
 })
 
+// ── Расхождение — что поправить в 1С ────────────────────────────────────────
+// buildDiscrepancy() из discrepancy.ts бэкенда: то же правило, что у портала
+// («Расхождения 1С») и выгрузки для бухгалтера. Считается по копии акта с
+// очередью, поэтому итог виден и без связи.
+
+export type DiscrepancyKind = 'not_found' | 'surplus' | 'location' | 'employee'
+
+export interface FieldChange {
+  kind: 'location' | 'employee'
+  label: string
+  from: string | null
+  to: string
+}
+
+export interface Discrepancy {
+  item: ActItem
+  kinds: DiscrepancyKind[]
+  changes: FieldChange[]
+  /** Что сделать сверх правки полей: проверить и списать, поставить на учёт */
+  action: string | null
+}
+
+const clean = (v?: string | null) => v?.trim() || null
+
+export function discrepancyOf(r: RawItem): Discrepancy | null {
+  const corrLoc = clean(r.correctedLocation)
+  const corrEmp = clean(r.correctedEmployee)
+  const isProblem = r.status === 'misplaced' || r.status === 'not_found' || r.status === 'surplus'
+  if (!isProblem && !corrLoc && !corrEmp) return null
+
+  // «Не на месте» без правки: новый кабинет — тот, где нашли
+  const newLocation = corrLoc ?? (r.status === 'misplaced' ? clean(r.actualLocation) : null)
+
+  const kinds: DiscrepancyKind[] = []
+  const changes: FieldChange[] = []
+  const actions: string[] = []
+
+  if (r.status === 'not_found') {
+    kinds.push('not_found')
+    actions.push('Проверить наличие, при отсутствии — списать')
+  }
+  if (r.status === 'surplus') {
+    kinds.push('surplus')
+    actions.push(`Поставить на учёт${r.actualLocation ? ` по кабинету «${r.actualLocation}»` : ''}`)
+  }
+  if (newLocation && norm(newLocation) !== norm(r.expectedLocation)) {
+    kinds.push('location')
+    changes.push({ kind: 'location', label: 'Кабинет', from: clean(r.expectedLocation), to: newLocation })
+  }
+  // Тот же человек, записанный иначе, — не смена сотрудника
+  if (corrEmp && norm(corrEmp) !== norm(r.employee)) {
+    kinds.push('employee')
+    changes.push({ kind: 'employee', label: 'Сотрудник', from: clean(r.employee), to: corrEmp })
+  }
+
+  if (!kinds.length) return null
+  return { item: toActItem(r), kinds, changes, action: actions.length ? actions.join('; ') : null }
+}
+
+export const discrepanciesOf = (items: RawItem[]) =>
+  items.map(discrepancyOf).filter((d): d is Discrepancy => d !== null)
+
 export type ActCounts = Record<ItemStatus, number> & { total: number }
 
 export const countItems = (items: { status: ItemStatus }[]): ActCounts => {

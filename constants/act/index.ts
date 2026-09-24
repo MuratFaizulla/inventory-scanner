@@ -9,7 +9,8 @@ import { type Store, createActs } from './acts'
 import { httpServer } from './http'
 
 export type {
-  Act, ActItem, ActStatus, ActSummary, ActView, FailedOp, ItemStatus, OpPatch, ScanOutcome, SyncState,
+  Act, ActItem, ActStatus, ActSummary, ActView, Discrepancy, DiscrepancyKind, FailedOp, FieldChange,
+  ItemStatus, OpPatch, ScanOutcome, SyncState,
 } from './acts'
 
 // Очередь маленькая и живёт в AsyncStorage (как в первой версии оффлайна),

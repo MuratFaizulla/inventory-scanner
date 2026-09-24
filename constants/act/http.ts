@@ -51,6 +51,10 @@ export const httpServer: ActServer = {
     call<{ deleted: boolean; item?: RawItem }>(() =>
       api.post(`${base(actId)}/items/${itemId}/unscan`, undefined, { timeout: SEND_TIMEOUT })),
 
+  // Большой акт сервер закрывает не мгновенно — ждём дольше обычного
+  complete: actId =>
+    call<ActSummary>(() => api.post(`${base(actId)}/complete`, undefined, { timeout: 2 * READ_TIMEOUT })),
+
   // Публичный эндпоинт — тот же, что у «Проверки связи» в настройках.
   // Любой ответ сервера, кроме «бэкенд запускается», — связь есть
   async ping() {

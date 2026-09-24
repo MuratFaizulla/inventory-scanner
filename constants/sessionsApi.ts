@@ -23,9 +23,10 @@ export const createSession = async (input: CreateSessionInput): Promise<ActSumma
   return res.data.data
 }
 
+// Завершение — не здесь, а act.complete(): сначала надо дослать очередь акта
 export const sessionAction = async (
   id: number,
-  action: 'start' | 'pause' | 'resume' | 'complete' | 'cancel',
+  action: 'start' | 'pause' | 'resume' | 'cancel',
 ): Promise<ActSummary> => {
   const res = await api.post(`/inventory-sessions/${id}/${action}`)
   return res.data.data

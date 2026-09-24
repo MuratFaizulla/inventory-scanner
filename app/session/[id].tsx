@@ -1,5 +1,6 @@
 // app/session/[id].tsx
 
+import { Feather } from '@expo/vector-icons'
 import { useIsFocused } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
@@ -112,6 +113,24 @@ export default function SessionDetailScreen() {
 
       <SyncBanner />
 
+      {/* Итог — что поправить в 1С; пока акт идёт — предварительный */}
+      {view && view.act.status !== 'draft' && view.act.status !== 'cancelled' && (
+        <TouchableOpacity
+          style={styles.resultRow}
+          onPress={() => router.push({ pathname: '/result/[id]', params: { id: session.id } })}
+          activeOpacity={0.7}
+        >
+          <Feather name="bar-chart-2" size={14} color={Colors.accent} />
+          <Text style={styles.resultText}>
+            {view.act.status === 'completed' ? 'Итог акта' : 'Предварительный итог'}
+          </Text>
+          <Text style={styles.resultCount}>
+            {view.discrepancies.length ? `расхождений: ${view.discrepancies.length}` : 'расхождений нет'}
+          </Text>
+          <Feather name="chevron-right" size={16} color={Colors.text3} />
+        </TouchableOpacity>
+      )}
+
       <SessionTabs
         session={session}
         activeTab={activeTab ?? 'FOUND'}
@@ -157,4 +176,11 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 14, color: Colors.text2, textAlign: 'center', paddingHorizontal: 32, marginBottom: 16 },
   backBtn:     { backgroundColor: Colors.bg3, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },
   backBtnText: { color: Colors.text1, fontWeight: '600' },
+  resultRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: Colors.bg2, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  resultText:  { fontSize: 13, fontWeight: '600', color: Colors.accent },
+  resultCount: { flex: 1, textAlign: 'right', fontSize: 12, color: Colors.text3 },
 })

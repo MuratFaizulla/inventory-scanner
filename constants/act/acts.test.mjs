@@ -97,6 +97,17 @@ function fakeServer() {
     Object.assign(it, { status: 'pending', actualLocation: null, scannedAt: null, scannedBy: null })
     return { deleted: false, item: copy(it) }
   }
+  s.complete = async actId => {
+    guard('complete', actId)
+    const act = acts[actId]
+    if (act.status !== 'in_progress' && act.status !== 'paused') {
+      throw new ServerError(400, 'Завершить можно только запущенную сессию')
+    }
+    for (const it of act.items) if (it.status === 'pending') it.status = 'not_found'
+    Object.assign(act, { status: 'completed', completedAt: SERVER_TIME })
+    const { items: _, ...summary } = act
+    return copy(summary)
+  }
   s.ping = async () => guard('ping')
   return s
 }
@@ -326,5 +337,73 @@ describe('очередь и логин', () => {
     await acts.sync.tick()
     assert.equal(scans(server)[0][3], at)
     assert.equal(server.acts[3].items[0].scannedAt, at)
+  })
+})
+
+const kindsById = view => Object.fromEntries(view.discrepancies.map(d => [d.item.id, d.kinds]))
+
+describe('итог акта', () => {
+  it('после завершения: не найдено, излишек, смена сотрудника — и что с ними делать', async () => {
+    const { acts, server } = setup()
+    const act = acts.open(3)
+    await act.refresh()
+    // Непроверенное в идущем акте — ещё не расхождение
+    assert.deepEqual(act.view().discrepancies, [])
+
+    await act.scan('050000200')
+    await act.relocate(8, { employee: 'Оканов Н. С.' })
+    await act.scan('050000999')
+    const view = await act.complete()
+
+    assert.equal(view.act.status, 'completed')
+    const printer = server.acts[3].items.find(i => i.invNumber === '050000999').id
+    assert.deepEqual(kindsById(view), { 7: ['not_found'], 8: ['employee'], [printer]: ['surplus'] })
+    const of = id => view.discrepancies.find(d => d.item.id === id)
+    assert.equal(of(7).action, 'Проверить наличие, при отсутствии — списать')
+    assert.equal(of(printer).action, 'Поставить на учёт по кабинету «Каб. 305»')
+    assert.deepEqual(of(8).changes, [{ kind: 'employee', label: 'Сотрудник', from: null, to: 'Оканов Н. С.' }])
+  })
+
+  it('тот же кабинет или сотрудник, записанный иначе, — не расхождение; «не на месте» — смена кабинета', async () => {
+    const { acts, server } = setup()
+    Object.assign(server.acts[3].items[0], {
+      status: 'found', actualLocation: 'Каб. 214', scannedAt: SERVER_TIME,
+      correctedLocation: 'каб. 214 ', employee: 'Иванова А. Б.', correctedEmployee: 'иванова а. б.',
+    })
+    Object.assign(server.acts[3].items[1], { status: 'misplaced', actualLocation: 'Каб. 305', scannedAt: SERVER_TIME })
+
+    const view = await acts.open(3).refresh()
+    assert.deepEqual(view.discrepancies.map(d => [d.item.id, d.changes]), [
+      [8, [{ kind: 'location', label: 'Кабинет', from: 'Каб. 101', to: 'Каб. 305' }]],
+    ])
+  })
+})
+
+describe('завершение акта', () => {
+  it('сначала досылает очередь: найденное без связи не становится «не найдено»', async () => {
+    const { acts, server } = setup()
+    const act = acts.open(3)
+    await act.refresh()
+    server.online = false
+    await act.scan('4600000193')
+
+    await assert.rejects(act.complete(), /ещё на телефоне \(1\)/)
+    assert.equal(server.acts[3].status, 'in_progress')
+    assert.ok(!server.calls.some(c => c[0] === 'complete'))
+
+    server.online = true
+    const view = await act.complete()
+    assert.equal(server.acts[3].items[0].status, 'found')
+    assert.deepEqual(kindsById(view), { 8: ['not_found'] })
+  })
+
+  it('без связи — понятная ошибка, акт на сервере не тронут', async () => {
+    const { acts, server } = setup()
+    const act = acts.open(3)
+    await act.refresh()
+    server.online = false
+
+    await assert.rejects(act.complete(), /только при подключении/)
+    assert.equal(server.acts[3].status, 'in_progress')
   })
 })
