@@ -7,10 +7,8 @@ import {
 } from 'react-native'
 import { Colors } from '../../constants/colors'
 import { confirmDialog, notify } from '../../constants/dialog'
-import { getOfflineState } from '../../constants/offline'
-import {
-  getSessionDetail, listSessions, RawSession, sessionAction,
-} from '../../constants/sessionsApi'
+import { acts, type ActSummary } from '../../constants/act'
+import { sessionAction } from '../../constants/sessionsApi'
 import CreateSessionModal from './CreateSessionModal'
 import { sessionStyles as s } from './sessionStyles'
 
@@ -23,25 +21,18 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string }> 
 }
 
 export default function InventoryTab({ scannerName }: { scannerName: string }) {
-  const [sessions,   setSessions]   = useState<RawSession[]>([])
+  const [sessions,   setSessions]   = useState<ActSummary[]>([])
   const [loading,    setLoading]    = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [acting,     setActing]     = useState<number | null>(null)
-  const [menuFor,    setMenuFor]    = useState<RawSession | null>(null)
+  const [menuFor,    setMenuFor]    = useState<ActSummary | null>(null)
   const router = useRouter()
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const list = await listSessions()
-      setSessions(list)
-      // Пока есть связь — сохранить запущенные акты на телефон, чтобы в
-      // кабинете без Wi-Fi сканировать, даже не открывая акт заранее
-      if (getOfflineState().online) {
-        list
-          .filter(x => x.status === 'in_progress')
-          .forEach(x => { getSessionDetail(x.id).catch(() => {}) })
-      }
+      // Запущенные акты модуль заодно сохраняет на телефон — для работы без Wi-Fi
+      setSessions(await acts.list())
     } catch {
       notify('Ошибка', 'Не удалось загрузить акты инвентаризации')
     } finally {
@@ -52,7 +43,7 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
   useEffect(() => { load() }, [load])
 
   const doAction = async (
-    session: RawSession,
+    session: ActSummary,
     action: 'start' | 'pause' | 'resume' | 'complete' | 'cancel',
   ) => {
     setActing(session.id)
@@ -68,7 +59,7 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
   }
 
   const confirmAction = async (
-    session: RawSession,
+    session: ActSummary,
     action: 'complete' | 'cancel',
   ) => {
     const texts = {
@@ -85,7 +76,7 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
   const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }) : ''
 
-  const renderItem = ({ item }: { item: RawSession }) => {
+  const renderItem = ({ item }: { item: ActSummary }) => {
     const meta = STATUS_META[item.status] ?? STATUS_META.draft
     const total = item.total ?? 0
     const scanned = item.scanned ?? 0

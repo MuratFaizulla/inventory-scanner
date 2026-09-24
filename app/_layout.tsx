@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
 import { Platform, View } from 'react-native'
 import { getApiBase, initApiHost, onAuthExpired, sameOrigin } from '../constants/api'
-import { initOffline, useAutoSync } from '../constants/offline'
+import { initActs, useAutoSync } from '../constants/act'
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false)
@@ -20,7 +20,7 @@ export default function RootLayout() {
       })
     }
     initApiHost()
-      .then(initOffline)
+      .then(initActs)
       .then(() => {
         console.log('[API] host loaded:', getApiBase())
         setReady(true)

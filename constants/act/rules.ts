@@ -1,10 +1,9 @@
-// Чистая логика оффлайн-режима: без React Native, сети и хранилища —
-// поэтому проверяется обычным `node --test constants/offlineCore.test.mjs`.
+// Правила акта — внутренности модуля акта (acts.ts), без сети и хранилища.
 //
-// Идея: на телефоне лежит последняя копия акта с сервера, а поверх неё —
-// очередь неотправленных операций. Экран показывает копию, к которой
-// применены операции из очереди, повторяя правила бэкенда
-// (inventory-session.service.ts: scan / updateItem / unscanItem).
+// Копия акта — последнее состояние с сервера, поверх неё — очередь
+// неотправленных операций. Экран видит копию с применённой очередью; правила
+// повторяют бэкенд (inventory-session.service.ts: scan / updateItem /
+// unscanItem). Термины — CONTEXT.md.
 
 // mapItem() из inventory-session.service.ts
 export interface RawItem {
@@ -28,7 +27,7 @@ export interface RawItem {
 
 export type OpPatch = { location?: string; employee?: string }
 
-type OpBase = { id: string; sessionId: number; code: string; at: string; user: string }
+type OpBase = { id: string; actId: number; code: string; at: string; user: string }
 
 // code — инв. номер или штрих-код, по которому сервер найдёт позицию;
 // itemId — null, пока позиция есть только на телефоне (скан не из акта)
@@ -169,15 +168,15 @@ export const replay = (items: RawItem[], ops: Op[]) => ops.reduce(applyOp, items
 // Отмена скана, который ещё не ушёл: убираем его и все следующие операции
 // с той же позицией — серверу про них знать незачем. null — такого скана
 // в очереди нет, отмену надо отправлять.
-export function withoutQueuedScan(ops: Op[], sessionId: number, item: RawItem): Op[] | null {
+export function withoutQueuedScan(ops: Op[], actId: number, item: RawItem): Op[] | null {
   const idx = ops.findIndex(
-    o => o.sessionId === sessionId && o.kind === 'scan' && matchesCode(item, o.code),
+    o => o.actId === actId && o.kind === 'scan' && matchesCode(item, o.code),
   )
   if (idx < 0) return null
   return ops.filter(
     (o, i) =>
       i < idx ||
-      o.sessionId !== sessionId ||
+      o.actId !== actId ||
       !(matchesCode(item, o.code) || (o.kind !== 'scan' && o.itemId === item.id)),
   )
 }
@@ -189,3 +188,50 @@ export const upsertItem = (items: RawItem[], item: RawItem) =>
     : [...items, item]
 
 export const removeItem = (items: RawItem[], id: number) => items.filter(i => i.id !== id)
+
+// ── Позиция акта — то, что видят экраны ─────────────────────────────────────
+
+export type ItemStatus = RawItem['status']
+
+export interface ActItem {
+  id: number                        // < 0 — позиция пока есть только на телефоне
+  invNumber: string | null
+  barcode: string | null
+  name: string | null
+  status: ItemStatus
+  location: string | null           // кабинет по акту с учётом перемещения
+  expectedLocation: string | null   // где числится по 1С
+  foundLocation: string | null      // где нашли при скане
+  mol: string | null
+  employee: string | null           // с учётом перемещения
+  scannedAt: string | null
+  scannedBy: string | null
+  note: string | null
+  queued: boolean                   // изменение ещё в очереди
+}
+
+export const toActItem = (r: RawItem): ActItem => ({
+  id: r.id,
+  invNumber: r.invNumber,
+  barcode: r.barcode,
+  name: r.description,
+  status: r.status,
+  // У излишка кабинета по акту нет — показываем, где нашли
+  location: r.correctedLocation ?? r.expectedLocation ?? r.actualLocation,
+  expectedLocation: r.expectedLocation,
+  foundLocation: r.actualLocation,
+  mol: r.mol,
+  employee: r.correctedEmployee ?? r.employee,
+  scannedAt: r.scannedAt,
+  scannedBy: r.scannedBy,
+  note: r.note,
+  queued: !!r.queued,
+})
+
+export type ActCounts = Record<ItemStatus, number> & { total: number }
+
+export const countItems = (items: { status: ItemStatus }[]): ActCounts => {
+  const c: ActCounts = { pending: 0, found: 0, misplaced: 0, surplus: 0, not_found: 0, total: items.length }
+  for (const it of items) c[it.status]++
+  return c
+}

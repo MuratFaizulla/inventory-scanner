@@ -12,7 +12,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { clearTokens, logout, sameOrigin, setApiHost } from '../constants/api'
-import { getOfflineState } from '../constants/offline'
+import { acts } from '../constants/act'
 import { goBack } from '../constants/nav'
 import { confirmDialog, notify } from '../constants/dialog'
 import { downloadFile } from '../constants/download'
@@ -152,7 +152,7 @@ export default function SettingsScreen() {
   }
 
   const handleLogout = async () => {
-    const { queued } = getOfflineState()
+    const { queued } = acts.sync.state()
     const ok = await confirmDialog(
       'Выход',
       queued > 0

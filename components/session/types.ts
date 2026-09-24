@@ -1,26 +1,18 @@
 // components/session/types.ts
 
+import type { ActItem, ItemStatus } from '../../constants/act'
+
+// Вкладки деталей акта; излишки показываем вместе с «не на месте»
 export type TabType = 'FOUND' | 'NOT_FOUND' | 'MISPLACED' | 'PENDING'
 
-export interface Asset {
-  id:                number
-  inventoryNumber:   string
-  name:              string
-  barcode:           string | null
-  location:          { name: string }
-  responsiblePerson: { fullName: string }
-  employee:          { fullName: string } | null
-}
+export const tabOf = (status: ItemStatus): TabType =>
+  status === 'found'     ? 'FOUND'
+  : status === 'not_found' ? 'NOT_FOUND'
+  : status === 'pending'   ? 'PENDING'
+  : 'MISPLACED'
 
-export interface Item {
-  id:        number
-  status:    string
-  note:      string | null
-  scannedAt: string | null
-  scannedBy: string | null
-  queued?:   boolean   // изменение пока на телефоне, ждёт связи
-  asset:     Asset
-}
+// Позиция акта — одна форма для всех экранов (constants/act)
+export type Item = ActItem
 
 export interface SessionDetail {
   id:        number

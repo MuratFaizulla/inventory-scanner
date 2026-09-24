@@ -1,76 +1,13 @@
-// Адаптер сканера под наш бэкенд (modules/inventory-session, modules/inventory).
-// UI-компоненты писались под старый бэкенд — здесь конвертируем формы данных.
-//
-// Акты работают и без сети (offline.ts): списки и акт отдаются из копии на
-// телефоне, а скан / перемещение / отмена встают в очередь и досылаются сами.
+// Акты вокруг модуля акта: создание, запуск/пауза/завершение, справочники,
+// статистика по кабинетам, поиск ОС. Работа внутри акта (скан, перемещение,
+// отмена, копия акта и очередь) — в модуле акта, constants/act.
 import api from './api'
-import {
-  READ_TIMEOUT, SEND_TIMEOUT,
-  cachedFetch, enqueue, getOfflineState, hasPending, isOfflineError, offlineUser,
-  patchSessionItems, pendingOps, readCache, replaceMine, sessionKey, setOnline,
-} from './offline'
-import {
-  type RawItem,
-  itemCode, predictScan, removeItem, replay, upsertItem, withoutQueuedScan,
-} from './offlineCore'
+import { acts, type ActItem, type ActSummary } from './act'
+import { cachedFetch } from './cachedFetch'
 
-export type { RawItem }
+const READ_TIMEOUT = 10000
 
-// ── Формат бэкенда ───────────────────────────────────────────────────────────
-
-export interface RawSession {
-  id: number
-  title: string
-  status: 'draft' | 'in_progress' | 'paused' | 'completed' | 'cancelled'
-  createdBy: string
-  conductedBy: string | null
-  mol: string | null
-  employee: string | null
-  locationFilter: string | null
-  notes: string | null
-  createdAt: string
-  startedAt: string | null
-  completedAt: string | null
-  total?: number
-  scanned?: number
-}
-
-// ── Конвертация в формы, которые ждёт UI ─────────────────────────────────────
-
-const STATUS_UP: Record<string, string> = {
-  pending: 'PENDING',
-  found: 'FOUND',
-  not_found: 'NOT_FOUND',
-  misplaced: 'MISPLACED',
-  surplus: 'MISPLACED', // излишки показываем во вкладке «Не на месте»
-}
-
-// components/session/types.ts → Item
-export const toUiItem = (r: RawItem) => ({
-  id: r.id,
-  status: STATUS_UP[r.status] ?? 'PENDING',
-  note: r.note,
-  scannedAt: r.scannedAt,
-  scannedBy: r.scannedBy,
-  queued: !!r.queued,
-  asset: {
-    id: r.id, // перемещение/отмена идут по item id
-    inventoryNumber: r.invNumber ?? '—',
-    name: r.description ?? '—',
-    barcode: r.barcode,
-    location: { name: r.correctedLocation || r.expectedLocation || '—' },
-    responsiblePerson: { fullName: r.mol || '—' },
-    employee: { fullName: r.correctedEmployee || r.employee || '—' },
-  },
-})
-
-// ── Сессии ───────────────────────────────────────────────────────────────────
-
-export const listSessions = (): Promise<RawSession[]> =>
-  cachedFetch('sessions', async () => {
-    const res = await api.get('/inventory-sessions', { timeout: READ_TIMEOUT })
-    return res.data.data ?? []
-  })
+// ── Создание и жизненный цикл акта — только с сетью ─────────────────────────
 
 export interface CreateSessionInput {
   title: string
@@ -81,7 +18,7 @@ export interface CreateSessionInput {
   notes?: string
 }
 
-export const createSession = async (input: CreateSessionInput): Promise<RawSession> => {
+export const createSession = async (input: CreateSessionInput): Promise<ActSummary> => {
   const res = await api.post('/inventory-sessions', input)
   return res.data.data
 }
@@ -89,7 +26,7 @@ export const createSession = async (input: CreateSessionInput): Promise<RawSessi
 export const sessionAction = async (
   id: number,
   action: 'start' | 'pause' | 'resume' | 'complete' | 'cancel',
-): Promise<RawSession> => {
+): Promise<ActSummary> => {
   const res = await api.post(`/inventory-sessions/${id}/${action}`)
   return res.data.data
 }
@@ -111,153 +48,6 @@ export const previewSession = async (opts: {
   return res.data.data as { total: number }
 }
 
-type RawDetail = RawSession & { items: RawItem[] }
-
-// Копия акта с сервера (или с телефона, если связи нет) + неотправленная очередь
-const sessionView = async (id: number | string) => {
-  const s = await cachedFetch<RawDetail>(sessionKey(Number(id)), async () => {
-    const res = await api.get(`/inventory-sessions/${id}`, { timeout: READ_TIMEOUT })
-    return res.data.data
-  })
-  return { ...s, items: replay(s.items ?? [], pendingOps(Number(id))) }
-}
-
-// Детали сессии в форме SessionDetail-источника (session/[id].tsx).
-// Заодно сохраняет акт на телефон — сканер вызывает её при открытии.
-export const getSessionDetail = async (id: number | string) => {
-  const s = await sessionView(id)
-  return {
-    id: s.id,
-    name: s.title,
-    status: s.status.toUpperCase(),
-    location: s.locationFilter ? { name: s.locationFilter } : { name: 'Вся школа' },
-    items: s.items.map(toUiItem),
-    raw: s,
-  }
-}
-
-// Копия акта без сети — для операций из очереди
-const offlineView = async (sessionId: number) => {
-  const s = await readCache<RawDetail>(sessionKey(sessionId))
-  if (!s) {
-    throw new Error('Нет связи с сервером, а этот акт не сохранён на телефоне. Откройте его один раз при подключении к Wi-Fi.')
-  }
-  return { ...s, items: replay(s.items ?? [], pendingOps(sessionId)) }
-}
-
-// Пока в очереди есть операции этого акта, новые встают за ними — иначе
-// перемещение может уйти раньше скана, к которому относится. Связи нет —
-// сразу в очередь: ждать таймаут на каждом скане при слабом Wi-Fi незачем,
-// возврат связи заметит фоновая досылка (useAutoSync)
-const tryOnline = async <T>(sessionId: number, send: () => Promise<T>): Promise<T | undefined> => {
-  if (hasPending(sessionId) || !getOfflineState().online) return undefined
-  try {
-    const data = await send()
-    setOnline(true)
-    return data
-  } catch (e) {
-    if (!isOfflineError(e)) throw e
-    setOnline(false)
-    return undefined
-  }
-}
-
-// ── Сканирование ─────────────────────────────────────────────────────────────
-
-export type ScanOutcome = {
-  // unknown — без сети, и кода нет в копии акта: излишек или ОС нет в базе
-  status: RawItem['status'] | 'unknown'
-  alreadyScanned: boolean
-  item: RawItem
-  queued: boolean   // скан на телефоне, уйдёт на сервер, когда будет связь
-}
-
-// POST :id/scan → { status, alreadyScanned, item }
-export const scanCode = async (sessionId: number | string, code: string): Promise<ScanOutcome> => {
-  const sid = Number(sessionId)
-  const online = await tryOnline(sid, async () => {
-    const res = await api.post(
-      `/inventory-sessions/${sid}/scan`,
-      { barcode: code, invNumber: code },
-      { timeout: SEND_TIMEOUT },
-    )
-    return res.data.data as { status: RawItem['status']; alreadyScanned: boolean; item: RawItem }
-  })
-  if (online) {
-    void patchSessionItems(sid, items => upsertItem(items, online.item))
-    return { ...online, queued: false }
-  }
-
-  const view = await offlineView(sid)
-  if (view.status !== 'in_progress') throw new Error('Сканировать можно только в запущенной сессии')
-  const at = new Date().toISOString()
-  const p = predictScan(view.items, code, at, offlineUser())
-  if (!p.alreadyScanned) await enqueue({ kind: 'scan', sessionId: sid, code, at })
-  return { ...p, queued: !p.alreadyScanned }
-}
-
-// Правка позиции (перемещение) — строки, не ID.
-// queued — правка пока на телефоне, уйдёт, когда будет связь
-export const updateItem = async (
-  sessionId: number | string,
-  itemId: number,
-  patch: { location?: string; employee?: string },
-): Promise<{ queued: boolean }> => {
-  const sid = Number(sessionId)
-  const online = itemId > 0
-    ? await tryOnline(sid, async () => {
-        const res = await api.patch(`/inventory-sessions/${sid}/items/${itemId}`, patch, { timeout: SEND_TIMEOUT })
-        return res.data.data as RawItem
-      })
-    : undefined
-  if (online) {
-    void patchSessionItems(sid, items => upsertItem(items, online))
-    return { queued: false }
-  }
-
-  const it = (await offlineView(sid)).items.find(i => i.id === itemId)
-  if (!it) throw new Error('Позиция не найдена в копии акта')
-  await enqueue({
-    kind: 'update', sessionId: sid, code: itemCode(it),
-    itemId: itemId > 0 ? itemId : null, patch, at: new Date().toISOString(),
-  })
-  return { queued: true }
-}
-
-// Отмена скана → позиция снова pending (излишек удаляется)
-export const unscanItem = async (sessionId: number | string, itemId: number) => {
-  const sid = Number(sessionId)
-
-  // Скан ещё не ушёл — просто забываем его, серверу знать незачем
-  if (hasPending(sid)) {
-    const it = (await offlineView(sid)).items.find(i => i.id === itemId)
-    const left = it && withoutQueuedScan(pendingOps(sid), sid, it)
-    if (left) {
-      await replaceMine(sid, left)
-      return
-    }
-  }
-
-  const online = itemId > 0
-    ? await tryOnline(sid, async () => {
-        const res = await api.post(`/inventory-sessions/${sid}/items/${itemId}/unscan`, undefined, { timeout: SEND_TIMEOUT })
-        return res.data.data as { deleted: boolean; item?: RawItem }
-      })
-    : undefined
-  if (online) {
-    void patchSessionItems(sid, items =>
-      online.deleted || !online.item ? removeItem(items, itemId) : upsertItem(items, online.item))
-    return
-  }
-
-  const it = (await offlineView(sid)).items.find(i => i.id === itemId)
-  if (!it) throw new Error('Позиция не найдена в копии акта')
-  await enqueue({
-    kind: 'unscan', sessionId: sid, code: itemCode(it),
-    itemId: itemId > 0 ? itemId : null, at: new Date().toISOString(),
-  })
-}
-
 // ── Справочники для RelocateModal (UI ждёт {id,name} / {id,fullName}) ───────
 
 export const getLocationOptions = async (): Promise<{ id: number; name: string }[]> => {
@@ -276,7 +66,7 @@ export const getEmployeeOptions = async (): Promise<{ id: number; fullName: stri
   return names.map((fullName, i) => ({ id: i + 1, fullName }))
 }
 
-// ── Статистика по кабинетам (считаем из позиций сессии) ─────────────────────
+// ── Статистика по кабинетам (считаем из позиций акта) ────────────────────────
 
 type StatAsset = {
   id: number
@@ -291,21 +81,21 @@ type StatAsset = {
   note: string | null
 }
 
-const toStatAsset = (item: ReturnType<typeof toUiItem>): StatAsset => ({
+const toStatAsset = (item: ActItem): StatAsset => ({
   id: item.id,
   itemId: item.id,
-  name: item.asset.name,
-  inventoryNumber: item.asset.inventoryNumber,
-  barcode: item.asset.barcode,
-  responsiblePerson: item.asset.responsiblePerson.fullName,
-  employee: item.asset.employee?.fullName ?? null,
+  name: item.name ?? '—',
+  inventoryNumber: item.invNumber ?? '—',
+  barcode: item.barcode,
+  responsiblePerson: item.mol,
+  employee: item.employee,
   scannedAt: item.scannedAt,
   scannedBy: item.scannedBy,
   note: item.note,
 })
 
-export const getStatsByLocation = async (sessionId: number | string) => {
-  const detail = await getSessionDetail(sessionId)
+export const getStatsByLocation = async (actId: number | string) => {
+  const { items } = await acts.open(Number(actId)).refresh()
 
   type Bucket = {
     totalAssets: StatAsset[]
@@ -316,8 +106,8 @@ export const getStatsByLocation = async (sessionId: number | string) => {
   }
   const map = new Map<string, Bucket>()
 
-  for (const item of detail.items) {
-    const loc = item.asset.location.name
+  for (const item of items) {
+    const loc = item.location ?? '—'
     if (!map.has(loc)) {
       map.set(loc, {
         totalAssets: [], foundAssets: [], notFoundAssets: [],
@@ -327,10 +117,11 @@ export const getStatsByLocation = async (sessionId: number | string) => {
     const b = map.get(loc)!
     const a = toStatAsset(item)
     b.totalAssets.push(a)
-    if (item.status === 'FOUND')     b.foundAssets.push(a)
-    if (item.status === 'NOT_FOUND') b.notFoundAssets.push(a)
-    if (item.status === 'MISPLACED') b.misplacedAssets.push(a)
-    if (item.status === 'PENDING')   b.pendingAssets.push(a)
+    if (item.status === 'found')     b.foundAssets.push(a)
+    if (item.status === 'not_found') b.notFoundAssets.push(a)
+    // Излишки — вместе с «не на месте», как во вкладках деталей акта
+    if (item.status === 'misplaced' || item.status === 'surplus') b.misplacedAssets.push(a)
+    if (item.status === 'pending')   b.pendingAssets.push(a)
   }
 
   return [...map.entries()]

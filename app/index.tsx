@@ -13,9 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { hasTokens, login, sameOrigin, setApiHost } from '../constants/api'
+import { hasTokens, isOfflineError, login, sameOrigin, setApiHost } from '../constants/api'
 import { Colors } from '../constants/colors'
-import { isOfflineError, setOfflineUser } from '../constants/offline'
+import { actsUserChanged } from '../constants/act'
 
 // Отпечаток пароля для входа без сети (FNV-1a): сам пароль не храним, а
 // сверить, что вводят тот же, можно. Это замок на экране, не защита токенов —
@@ -69,7 +69,7 @@ export default function LoginScreen() {
 
     try {
       const user = await login(username.trim(), password)
-      setOfflineUser(username.trim())
+      void actsUserChanged(username.trim())
       await AsyncStorage.multiSet([
         ['apiHost',      trimmedHost],
         ['authUsername', username.trim()],
@@ -91,7 +91,7 @@ export default function LoginScreen() {
         username.trim() === savedUser.current &&
         verifier === passVerifier(username.trim(), password)
       ) {
-        setOfflineUser(username.trim())
+        void actsUserChanged(username.trim())
         router.replace('/sessions')
         return
       }

@@ -5,7 +5,8 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Colors } from '../../constants/colors'
-import type { Employee, Location, ScannedAsset } from './types'
+import type { ActItem } from '../../constants/act'
+import type { Employee, Location } from './types'
 
 export type LastRelocate = {
   locationId:   number | null
@@ -17,7 +18,7 @@ export type LastRelocate = {
 
 interface Props {
   visible:            boolean
-  asset:              ScannedAsset | undefined
+  item:               ActItem | undefined
   locations:          Location[]
   employees:          Employee[]
   selectedLocationId: number | null
@@ -40,7 +41,7 @@ interface Props {
 }
 
 export default function RelocateModal({
-  visible, asset, locations, employees,
+  visible, item, locations, employees,
   selectedLocationId, selectedEmployeeId, employeeNote,
   relocating, modalTab, search, keyboardHeight, screenHeight,
   lastRelocate,
@@ -49,7 +50,7 @@ export default function RelocateModal({
 }: Props) {
 
   const filteredLocations = locations
-    .filter(l => l.name !== asset?.location)
+    .filter(l => l.name !== item?.location)
     .filter(l => l.name.toLowerCase().includes(search.toLowerCase()))
 
   const filteredEmployees = employees
@@ -71,15 +72,15 @@ export default function RelocateModal({
           <Text style={styles.title}>✏️ Изменить данные ОС</Text>
 
           {/* Инфо об ОС */}
-          {asset && keyboardHeight === 0 && (
+          {item && keyboardHeight === 0 && (
             <View style={styles.assetInfo}>
-              <Text style={styles.assetName} numberOfLines={1}>{asset.name}</Text>
-              <Text style={styles.assetInv}>{asset.inventoryNumber}</Text>
-              {asset.barcode && <Text style={styles.assetInv}>📊 {asset.barcode}</Text>}
+              <Text style={styles.assetName} numberOfLines={1}>{item.name ?? '—'}</Text>
+              <Text style={styles.assetInv}>{item.invNumber ?? '—'}</Text>
+              {item.barcode && <Text style={styles.assetInv}>📊 {item.barcode}</Text>}
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
-                <Text style={styles.assetMeta}>📍 {asset.location}</Text>
-                {asset.employee && asset.employee !== '—' && (
-                  <Text style={styles.assetMeta}>🧑‍💼 {asset.employee.split(' ')[0]}</Text>
+                <Text style={styles.assetMeta}>📍 {item.location ?? '—'}</Text>
+                {!!item.employee && (
+                  <Text style={styles.assetMeta}>🧑‍💼 {item.employee.split(' ')[0]}</Text>
                 )}
               </View>
             </View>

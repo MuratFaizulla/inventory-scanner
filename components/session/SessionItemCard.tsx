@@ -6,7 +6,7 @@ import * as Haptics from 'expo-haptics'
 import { useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Colors } from '../../constants/colors'
-import type { Item } from './types'
+import { tabOf, type Item } from './types'
 
 interface Props {
   item:       Item
@@ -15,10 +15,11 @@ interface Props {
   onCancel:   (item: Item) => void
 }
 
-const statusBorderColor = (status: string) => {
-  if (status === 'FOUND')     return Colors.accent2
-  if (status === 'NOT_FOUND') return Colors.danger
-  if (status === 'MISPLACED') return Colors.warn
+const statusBorderColor = (status: Item['status']) => {
+  const tab = tabOf(status)
+  if (tab === 'FOUND')     return Colors.accent2
+  if (tab === 'NOT_FOUND') return Colors.danger
+  if (tab === 'MISPLACED') return Colors.warn
   return Colors.border
 }
 
@@ -52,23 +53,23 @@ function CopyCode({ icon, value }: { icon: keyof typeof Feather.glyphMap; value:
 export default function SessionItemCard({ item, cancelling, onRelocate, onCancel }: Props) {
   return (
     <View style={[styles.card, { borderLeftColor: statusBorderColor(item.status) }]}>
-      <Text style={styles.name} numberOfLines={2}>{item.asset.name}</Text>
+      <Text style={styles.name} numberOfLines={2}>{item.name ?? '—'}</Text>
 
       {/* Коды — тап копирует */}
       <View style={styles.codesRow}>
-        {item.asset.inventoryNumber !== '—' && (
-          <CopyCode icon="hash" value={item.asset.inventoryNumber} />
+        {!!item.invNumber && (
+          <CopyCode icon="hash" value={item.invNumber} />
         )}
-        {!!item.asset.barcode && (
-          <CopyCode icon="credit-card" value={item.asset.barcode} />
+        {!!item.barcode && (
+          <CopyCode icon="credit-card" value={item.barcode} />
         )}
       </View>
 
       <View style={styles.infoBlock}>
-        <InfoRow icon="map-pin" value={item.asset.location.name} />
-        <InfoRow icon="user" value={item.asset.responsiblePerson.fullName} />
-        {item.asset.employee && item.asset.employee.fullName !== '—' && (
-          <InfoRow icon="users" value={item.asset.employee.fullName} />
+        <InfoRow icon="map-pin" value={item.location ?? '—'} />
+        <InfoRow icon="user" value={item.mol ?? '—'} />
+        {!!item.employee && (
+          <InfoRow icon="users" value={item.employee} />
         )}
       </View>
 
@@ -95,7 +96,7 @@ export default function SessionItemCard({ item, cancelling, onRelocate, onCancel
         </View>
       )}
 
-      {item.status !== 'PENDING' && (
+      {item.status !== 'pending' && (
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.editBtn} onPress={() => onRelocate(item)}>
             <Feather name="edit-2" size={12} color={Colors.accent} />

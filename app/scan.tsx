@@ -12,10 +12,8 @@ import {
 } from 'react-native'
 import { confirmDialog, notify } from '../constants/dialog'
 import { goBack } from '../constants/nav'
-import {
-  getEmployeeOptions, getLocationOptions, getSessionDetail,
-  scanCode, toUiItem, unscanItem, updateItem,
-} from '../constants/sessionsApi'
+import { useAct } from '../constants/act'
+import { getEmployeeOptions, getLocationOptions } from '../constants/sessionsApi'
 
 import SyncBanner from '../components/SyncBanner'
 import CameraScanner from '../components/scan/CameraScanner'
@@ -37,6 +35,9 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const router       = useRouter()
   const { height: screenHeight } = useWindowDimensions()
+  // Открытый акт модуль сразу сохраняет на телефон — дальше по кабинетам
+  // сканировать можно и без Wi-Fi
+  const { act } = useAct(Number(sessionId))
 
   // ── Сканер ────────────────────────────────────────────────────────────────────
   const [result,       setResult]       = useState<ScanResult | null>(null)
@@ -87,10 +88,7 @@ export default function ScanScreen() {
     AsyncStorage.getItem('scannerName').then(n => setScannerName(n || ''))
     getLocationOptions().then(setLocations).catch(() => {})
     getEmployeeOptions().then(setEmployees).catch(() => {})
-    // Сохранить акт на телефон, пока есть связь, — дальше по кабинетам
-    // сканировать можно и без Wi-Fi
-    getSessionDetail(sessionId).catch(() => {})
-  }, [sessionId])
+  }, [])
 
   // ── История ───────────────────────────────────────────────────────────────────
   const addToHistory = useCallback((barcode: string, status: ScanStatus, name: string) => {
@@ -116,81 +114,54 @@ export default function ScanScreen() {
   const doScan = useCallback(async (barcode: string) => {
     if (!barcode.trim()) return
     setSubmitting(true)
+    const code = barcode.trim()
     try {
-      const data = await scanCode(sessionId, barcode.trim())
+      const r = await act.scan(code)
 
-      if (data.status === 'unknown') {
+      if (r.kind === 'not_found') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+        setResult({ status: 'NOT_FOUND', message: `Не найден: ${code}` })
+        addToHistory(code, 'NOT_FOUND', code)
+        return
+      }
+
+      if (r.kind === 'unknown') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
         setResult({
           status:  'OFFLINE_UNKNOWN',
           queued:  true,
-          message: `Кода ${barcode.trim()} нет в сохранённой копии акта. Когда появится связь, сервер решит: излишек это или такого ОС нет в базе.`,
+          message: `Кода ${code} нет в сохранённой копии акта. Когда появится связь, сервер решит: излишек это или такого ОС нет в базе.`,
         })
         setScannedCount(c => c + 1)
-        addToHistory(barcode, 'OFFLINE_UNKNOWN', barcode)
+        addToHistory(code, 'OFFLINE_UNKNOWN', code)
         return
       }
 
-      const ui   = toUiItem(data.item)
-
-      const asset = {
-        id:                ui.id,
-        itemId:            ui.id,
-        inventoryNumber:   ui.asset.inventoryNumber || barcode,
-        name:              ui.asset.name || 'Неизвестно',
-        barcode:           ui.asset.barcode,
-        location:          ui.asset.location.name,
-        responsiblePerson: ui.asset.responsiblePerson.fullName,
-        employee:          ui.asset.employee?.fullName || '—',
-      }
-
-      if (data.alreadyScanned) {
+      const name = r.item.name ?? code
+      if (r.kind === 'already') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
-        setResult({
-          status: 'ALREADY',
-          asset,
-          previousScan: {
-            scannedAt: ui.scannedAt,
-            scannedBy: ui.scannedBy,
-            note:      ui.note,
-          },
-        })
-        addToHistory(barcode, 'ALREADY', asset.name)
+        setResult({ status: 'ALREADY', item: r.item })
+        addToHistory(code, 'ALREADY', name)
         return
       }
 
       const status: ScanStatus =
-        data.status === 'misplaced' ? 'MISPLACED' :
-        data.status === 'surplus'   ? 'SURPLUS'   : 'FOUND'
+        r.kind === 'misplaced' ? 'MISPLACED' :
+        r.kind === 'surplus'   ? 'SURPLUS'   : 'FOUND'
 
       if (status === 'FOUND') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       else                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
 
-      setResult({
-        status,
-        asset,
-        expectedLocation: data.item.expectedLocation ?? undefined,
-        actualLocation:   data.item.actualLocation ?? undefined,
-        queued:           data.queued,
-      })
+      setResult({ status, item: r.item, queued: r.queued })
       setScannedCount(c => c + 1)
-      addToHistory(barcode, status, asset.name)
-    } catch (e: any) {
-      if (e.response?.status === 404) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-        setResult({ status: 'NOT_FOUND', message: `Не найден: ${barcode}` })
-        addToHistory(barcode, 'NOT_FOUND', barcode)
-      } else {
-        // Без ответа сервера — своя ошибка оффлайна (акт не сохранён на телефоне и т.п.)
-        const msg = e.response
-          ? e.response.data?.message || e.response.data?.error || 'Ошибка сервера'
-          : e.message || 'Ошибка сервера'
-        setResult({ status: 'NOT_FOUND', message: msg })
-      }
+      addToHistory(code, status, name)
+    } catch (e) {
+      // Модуль акта отдаёт текст для человека: отказ сервера или «нет копии»
+      setResult({ status: 'NOT_FOUND', message: (e as Error).message || 'Ошибка сервера' })
     } finally {
       setSubmitting(false)
     }
-  }, [sessionId, addToHistory])
+  }, [act, addToHistory])
 
   const handleBarcode = useCallback((data: string) => {
     if (cooldown.current) return
@@ -243,7 +214,7 @@ export default function ScanScreen() {
   }
 
   const handleRelocate = async () => {
-    if (!result?.asset) return
+    if (!result?.item) return
     if (!selectedLocationId && !selectedEmployeeId) {
       notify('Выберите', 'Выберите кабинет или сотрудника')
       return
@@ -253,7 +224,7 @@ export default function ScanScreen() {
       const loc = locations.find(l => l.id === selectedLocationId)
       const emp = employees.find(e => e.id === selectedEmployeeId)
 
-      const { queued } = await updateItem(sessionId, result.asset.itemId, {
+      const { queued } = await act.relocate(result.item.id, {
         ...(loc && { location: loc.name }),
         ...(emp && { employee: emp.fullName }),
       })
@@ -278,8 +249,8 @@ export default function ScanScreen() {
       resetRelocate()
       notify('✅ Готово', msg)
       handleNext()
-    } catch (e: any) {
-      notify('Ошибка', e.response?.data?.error || e.message || 'Не удалось переместить')
+    } catch (e) {
+      notify('Ошибка', (e as Error).message || 'Не удалось переместить')
     } finally {
       setRelocating(false)
     }
@@ -287,7 +258,7 @@ export default function ScanScreen() {
 
   // ── Cancel scan ───────────────────────────────────────────────────────────────
   const handleCancelScan = async () => {
-    if (!result?.asset?.itemId) return
+    if (!result?.item) return
     const ok = await confirmDialog(
       'Отменить сканирование?',
       'ОС вернётся в статус "Не проверен"',
@@ -297,10 +268,10 @@ export default function ScanScreen() {
     if (!ok) return
     setCancelling(true)
     try {
-      await unscanItem(sessionId, result.asset!.itemId)
+      await act.cancel(result.item.id)
       handleNext()
-    } catch {
-      notify('Ошибка', 'Не удалось отменить')
+    } catch (e) {
+      notify('Ошибка', (e as Error).message || 'Не удалось отменить')
     } finally {
       setCancelling(false)
     }
@@ -381,7 +352,7 @@ export default function ScanScreen() {
 
       <RelocateModal
         visible={showRelocate}
-        asset={result?.asset}
+        item={result?.item}
         locations={locations}
         employees={employees}
         selectedLocationId={selectedLocationId}

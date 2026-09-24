@@ -17,7 +17,7 @@ interface Props {
 export default function ScanResultCard({
   result, cancelling, onNext, onNextManual, onRelocate, onCancelScan,
 }: Props) {
-  const { status, asset, expectedLocation, actualLocation, previousScan } = result
+  const { status, item } = result
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container}>
@@ -42,17 +42,17 @@ export default function ScanResultCard({
       )}
 
       {/* ── Карточка ОС ── */}
-      {asset ? (
+      {item ? (
         <View style={styles.card}>
-          <Text style={styles.assetName}>{asset.name}</Text>
-          <Text style={styles.assetInv}>{asset.inventoryNumber}</Text>
-          {asset.barcode && <Text style={styles.assetBarcode}>📊 {asset.barcode}</Text>}
+          <Text style={styles.assetName}>{item.name ?? 'Неизвестно'}</Text>
+          <Text style={styles.assetInv}>{item.invNumber ?? '—'}</Text>
+          {item.barcode && <Text style={styles.assetBarcode}>📊 {item.barcode}</Text>}
 
           <View style={styles.divider} />
-          <Row label="📍 Местонахождение" value={asset.location} />
-          <Row label="👤 МОЛ"             value={asset.responsiblePerson} />
-          {asset.employee && asset.employee !== '—' && (
-            <Row label="🧑‍💼 Сотрудник" value={asset.employee} />
+          <Row label="📍 Местонахождение" value={item.location ?? '—'} />
+          <Row label="👤 МОЛ"             value={item.mol ?? '—'} />
+          {!!item.employee && (
+            <Row label="🧑‍💼 Сотрудник" value={item.employee} />
           )}
 
           {/* Не на месте */}
@@ -60,28 +60,28 @@ export default function ScanResultCard({
             <>
               <View style={styles.divider} />
               <Text style={styles.misplacedTitle}>⚠️ Не на своём месте</Text>
-              <Row label="По базе числится" value={expectedLocation || '—'} valueColor={Colors.danger} />
-              <Row label="Найден здесь"     value={actualLocation  || '—'} valueColor={Colors.warn} />
+              <Row label="По базе числится" value={item.expectedLocation || '—'} valueColor={Colors.danger} />
+              <Row label="Найден здесь"     value={item.foundLocation    || '—'} valueColor={Colors.warn} />
             </>
           )}
 
           {/* Предыдущее сканирование */}
-          {status === 'ALREADY' && previousScan && (
+          {status === 'ALREADY' && (
             <>
               <View style={styles.divider} />
               <View style={styles.prevBlock}>
                 <Text style={styles.prevTitle}>🔄 Данные первого сканирования</Text>
-                {previousScan.scannedAt && (
+                {item.scannedAt && (
                   <Row
                     label="🕐 Время"
-                    value={new Date(previousScan.scannedAt).toLocaleString('ru-RU', {
+                    value={new Date(item.scannedAt).toLocaleString('ru-RU', {
                       day: '2-digit', month: '2-digit',
                       hour: '2-digit', minute: '2-digit', second: '2-digit',
                     })}
                   />
                 )}
-                {previousScan.scannedBy && <Row label="🖊️ Кто сканировал" value={previousScan.scannedBy} />}
-                {previousScan.note      && <Row label="📝 Примечание"     value={previousScan.note} valueColor={Colors.warn} />}
+                {item.scannedBy && <Row label="🖊️ Кто сканировал" value={item.scannedBy} />}
+                {item.note      && <Row label="📝 Примечание"     value={item.note} valueColor={Colors.warn} />}
               </View>
             </>
           )}

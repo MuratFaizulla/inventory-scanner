@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons'
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Colors } from '../constants/colors'
 import { confirmDialog } from '../constants/dialog'
-import { dismissFailed, syncNow, useOffline } from '../constants/offline'
+import { acts, useSyncState } from '../constants/act'
 
 const KIND: Record<string, string> = { scan: 'Скан', update: 'Изменение', unscan: 'Отмена скана' }
 
@@ -14,7 +14,7 @@ const plural = (n: number) =>
   : 'операций'
 
 export default function SyncBanner() {
-  const { online, syncing, queued, failed } = useOffline()
+  const { online, syncing, queued, failed } = useSyncState()
 
   const showFailed = async () => {
     const lines = failed.slice(0, 8).map(f => `• ${KIND[f.kind]} ${f.code}: ${f.error}`)
@@ -25,7 +25,7 @@ export default function SyncBanner() {
       'Понятно, убрать',
       { cancelText: 'Оставить' },
     )
-    if (ok) await dismissFailed()
+    if (ok) await acts.sync.dismissFailed()
   }
 
   if (online && !queued && !failed.length) return null
@@ -47,7 +47,7 @@ export default function SyncBanner() {
                   : 'Нет связи · показаны сохранённые данные'}
           </Text>
           {queued > 0 && !syncing && (
-            <TouchableOpacity style={styles.btn} onPress={() => syncNow()}>
+            <TouchableOpacity style={styles.btn} onPress={() => { void acts.sync.now() }}>
               <Text style={styles.btnText}>Отправить</Text>
             </TouchableOpacity>
           )}

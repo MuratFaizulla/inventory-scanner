@@ -5,8 +5,9 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import {
-  createSession, getCreateOptions, previewSession, RawSession,
+  createSession, getCreateOptions, previewSession,
 } from '../../constants/sessionsApi'
+import type { ActSummary } from '../../constants/act'
 import { Colors } from '../../constants/colors'
 import { notify } from '../../constants/dialog'
 import FilterSelect from '../onec/FilterSelect'
@@ -17,7 +18,7 @@ export default function CreateSessionModal({ visible, scannerName, onClose, onCr
   visible: boolean
   scannerName: string
   onClose: () => void
-  onCreated: (session: RawSession) => void
+  onCreated: (session: ActSummary) => void
 }) {
   const [title,       setTitle]       = useState('')
   const [conductedBy, setConductedBy] = useState('')

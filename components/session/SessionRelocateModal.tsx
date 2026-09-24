@@ -34,7 +34,7 @@ export default function SessionRelocateModal({
   onSelectLocation, onSelectEmployee, onNoteChange,
 }: Props) {
   const filteredLocations = locations
-    .filter(l => l.name !== item?.asset.location.name)
+    .filter(l => l.name !== item?.location)
     .filter(l => l.name.toLowerCase().includes(search.toLowerCase()))
 
   const filteredEmployees = employees
@@ -58,12 +58,12 @@ export default function SessionRelocateModal({
           {/* Инфо об ОС */}
           {item && (
             <View style={styles.assetInfo}>
-              <Text style={styles.assetName} numberOfLines={2}>{item.asset.name}</Text>
-              <Text style={styles.assetInv}>{item.asset.inventoryNumber}</Text>
+              <Text style={styles.assetName} numberOfLines={2}>{item.name ?? '—'}</Text>
+              <Text style={styles.assetInv}>{item.invNumber ?? '—'}</Text>
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
-                <Text style={styles.assetMeta}>📍 {item.asset.location.name}</Text>
-                {item.asset.employee && (
-                  <Text style={styles.assetMeta}>🧑‍💼 {item.asset.employee.fullName.split(' ')[0]}</Text>
+                <Text style={styles.assetMeta}>📍 {item.location ?? '—'}</Text>
+                {!!item.employee && (
+                  <Text style={styles.assetMeta}>🧑‍💼 {item.employee.split(' ')[0]}</Text>
                 )}
               </View>
             </View>
