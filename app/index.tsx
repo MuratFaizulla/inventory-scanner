@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -13,22 +12,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { hasTokens, login, sameOrigin, setApiHost } from '../constants/api'
-import { errorText, isOfflineError } from '../constants/errorText'
+import { account } from '../constants/account'
+import { sameOrigin } from '../constants/api'
+import { errorText } from '../constants/errorText'
 import { Colors } from '../constants/colors'
-import { actsUserChanged } from '../constants/act'
-
-// Отпечаток пароля для входа без сети (FNV-1a): сам пароль не храним, а
-// сверить, что вводят тот же, можно. Это замок на экране, не защита токенов —
-// они и так лежат на телефоне
-const passVerifier = (user: string, pass: string) => {
-  let h = 0x811c9dc5
-  for (const ch of `${user}\u0000${pass}`) {
-    h ^= ch.codePointAt(0)!
-    h = Math.imul(h, 0x01000193)
-  }
-  return (h >>> 0).toString(16)
-}
 
 export default function LoginScreen() {
   const [host,     setHost]     = useState('')
@@ -41,20 +28,15 @@ export default function LoginScreen() {
 
   const userRef = useRef<TextInput>(null)
   const passRef = useRef<TextInput>(null)
-  const savedUser = useRef('')
 
   useEffect(() => {
-    AsyncStorage.multiGet(['apiHost', 'authUsername', 'savedPassword', 'rememberMe'])
-      .then(pairs => {
-        const saved = Object.fromEntries(pairs.map(([k, v]) => [k, v ?? '']))
-        savedUser.current = saved.authUsername
-        if (saved.apiHost)      setHost(saved.apiHost)
-        if (saved.authUsername) setUsername(saved.authUsername)
-        if (saved.rememberMe === '1') {
-          setRemember(true)
-          if (saved.savedPassword) setPassword(saved.savedPassword)
-        }
-      })
+    const saved = account.saved()
+    if (saved.host)  setHost(saved.host)
+    if (saved.login) setUsername(saved.login)
+    if (saved.remember) {
+      setRemember(true)
+      if (saved.password) setPassword(saved.password)
+    }
   }, [])
 
   const isValid = (sameOrigin || host.trim()) && username.trim() && password
@@ -65,37 +47,16 @@ export default function LoginScreen() {
     setLoading(true)
     setError(null)
 
-    const trimmedHost = sameOrigin ? window.location.host : host.trim()
-    setApiHost(trimmedHost)
-
     try {
-      const user = await login(username.trim(), password)
-      void actsUserChanged(username.trim())
-      await AsyncStorage.multiSet([
-        ['apiHost',      trimmedHost],
-        ['authUsername', username.trim()],
-        ['authRole',     user.role],
-        // Имя для актов инвентаризации — из AD, fallback на логин
-        ['scannerName',  user.displayName || user.username],
-        ['rememberMe',   remember ? '1' : ''],
-        ['savedPassword', remember ? password : ''],
-        ['offlineVerifier', passVerifier(username.trim(), password)],
-      ])
+      // Без связи модуль сам пускает тот же логин с тем же паролем, пока вход не истёк
+      await account.signIn({
+        host:     sameOrigin ? window.location.host : host,
+        login:    username,
+        password,
+        remember,
+      })
       router.replace('/sessions')
     } catch (e: unknown) {
-      // Нет связи, но этот же логин уже входил с этим паролем и токены живы
-      // (refresh — 7 дней) — пускаем работать по сохранённым актам,
-      // очередь уйдёт, когда будет связь
-      const verifier = await AsyncStorage.getItem('offlineVerifier')
-      if (
-        isOfflineError(e) && hasTokens() &&
-        username.trim() === savedUser.current &&
-        verifier === passVerifier(username.trim(), password)
-      ) {
-        void actsUserChanged(username.trim())
-        router.replace('/sessions')
-        return
-      }
       // Причину 401 называет бэкенд: неверный пароль или недоступен AD
       const status = (e as { response?: { status?: number } }).response?.status
       setError(status === 403 ? 'Нет доступа — обратитесь к администратору' : errorText(e))

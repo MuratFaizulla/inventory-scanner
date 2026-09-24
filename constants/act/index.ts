@@ -3,7 +3,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { AppState } from 'react-native'
-import { hasTokens } from '../api'
+import { account } from '../account'
 import { localStore } from '../localStore'
 import { type Store, createActs } from './acts'
 import { httpServer } from './http'
@@ -20,27 +20,24 @@ const store: Store = {
   set: (key, value) => (QUEUE_KEYS.has(key) ? AsyncStorage.setItem(key, value) : localStore.set(key, value)),
 }
 
-// Владелец очереди — логин, под которым вошли. Без входа (токенов нет)
-// очередь ничья и не досылается: сервер всё равно не примет
-let user = ''
-
 export const acts = createActs({
   server: httpServer,
   store,
-  currentUser: () => (hasTokens() ? user : ''),
+  // Владелец очереди — логин, под которым вошли. Без входа очередь ничья
+  // и не досылается: сервер всё равно не примет
+  currentUser: () => account.user()?.login ?? '',
 })
 
-/** При старте приложения — после initApiHost (токены уже прочитаны) */
+/** При старте приложения — после account.init() */
 export async function initActs() {
-  user = (await AsyncStorage.getItem('authUsername')) ?? ''
   await acts.init()
-}
-
-/** После входа: очередь этого логина снова «своя» и досылается */
-export async function actsUserChanged(username: string) {
-  user = username
-  await acts.init()
-  void acts.sync.tick()
+  // Вошли под другим логином или снова после выхода — его очередь снова «своя»
+  let owner = account.user()?.login ?? ''
+  account.subscribe(() => {
+    const login = account.user()?.login ?? ''
+    if (login && login !== owner) void acts.init().then(() => acts.sync.tick())
+    owner = login
+  })
 }
 
 /**

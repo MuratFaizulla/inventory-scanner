@@ -2,7 +2,8 @@ import { Stack, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useState } from 'react'
 import { Platform, View } from 'react-native'
-import { getApiBase, initApiHost, onAuthExpired, sameOrigin } from '../constants/api'
+import { getApiBase, sameOrigin } from '../constants/api'
+import { account } from '../constants/account'
 import { initActs, useAutoSync } from '../constants/act'
 
 export default function RootLayout() {
@@ -11,7 +12,13 @@ export default function RootLayout() {
   useAutoSync()
 
   useEffect(() => {
-    onAuthExpired(() => router.replace('/'))
+    // Вход закончился — «Выйти», смена сервера или истёк — на экран входа
+    let signedIn = !!account.user()
+    const off = account.subscribe(() => {
+      const now = !!account.user()
+      if (signedIn && !now) router.replace('/')
+      signedIn = now
+    })
     // Веб по HTTPS: service worker держит приложение в кэше браузера —
     // открывается и без сети (шаблон pwa/sw.js, сборка — scripts/build-web.js)
     if (Platform.OS === 'web' && sameOrigin && 'serviceWorker' in navigator) {
@@ -19,17 +26,18 @@ export default function RootLayout() {
         console.warn('[SW] register failed:', e)
       })
     }
-    initApiHost()
+    account.init()
       .then(initActs)
       .then(() => {
         console.log('[API] host loaded:', getApiBase())
         setReady(true)
       })
       .catch(e => {
-        console.error('[API] initApiHost failed:', e)
+        console.error('[Account] init failed:', e)
         // Всё равно рендерим — иначе приложение зависнет
         setReady(true)
       })
+    return off
   }, [router])
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: '#0f172a' }} />

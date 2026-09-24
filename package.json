@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "build:web": "node scripts/build-web.js",
-    "test": "node --test constants/act/acts.test.mjs constants/errorText.test.mjs"
+    "test": "node --test constants/act/acts.test.mjs constants/account/account.test.mjs constants/errorText.test.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

@@ -1,16 +1,16 @@
 // app/ScanScreen.tsx
 
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useCameraPermissions } from 'expo-camera'
 import * as Haptics from 'expo-haptics'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import {
   KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native'
 import { confirmDialog, notify } from '../constants/dialog'
 import { errorText } from '../constants/errorText'
 import { goBack } from '../constants/nav'
+import { useAccountUser } from '../constants/account'
 import { useAct, type ActItem } from '../constants/act'
 
 import RelocateModal from '../components/RelocateModal'
@@ -37,7 +37,7 @@ export default function ScanScreen() {
 
   // ── Сканер ────────────────────────────────────────────────────────────────────
   const [result,       setResult]       = useState<ScanResult | null>(null)
-  const [scannerName,  setScannerName]  = useState('')
+  const scannerName = useAccountUser()?.name ?? ''
   const [scannedCount, setScannedCount] = useState(0)
   const [showManual,   setShowManual]   = useState(false)
   const [manualInput,  setManualInput]  = useState('')
@@ -59,10 +59,6 @@ export default function ScanScreen() {
 
   // ── Cancel ────────────────────────────────────────────────────────────────────
   const [cancelling, setCancelling] = useState(false)
-
-  useEffect(() => {
-    AsyncStorage.getItem('scannerName').then(n => setScannerName(n || ''))
-  }, [])
 
   // ── История ───────────────────────────────────────────────────────────────────
   const addToHistory = useCallback((barcode: string, status: ScanStatus, name: string) => {

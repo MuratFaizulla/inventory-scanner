@@ -2,7 +2,8 @@
 // Web — через blob+anchor, телефон — expo-file-system + системный share.
 import axios from 'axios'
 import { Platform } from 'react-native'
-import api, { getAccessToken, getApiBase } from './api'
+import { account } from './account'
+import api, { getApiBase } from './api'
 import { NO_CONNECTION, responseErrorText } from './errorText'
 
 const MIME: Record<string, string> = {
@@ -47,15 +48,14 @@ export const downloadFile = async (
   const doDownload = () =>
     FileSystem.downloadAsync(url, dest, {
       headers: {
-        Authorization: `Bearer ${getAccessToken()}`,
+        Authorization: `Bearer ${account.token()}`,
         'x-client': 'mobile',
       },
     }).catch(() => { throw new Error(NO_CONNECTION) })
 
   let result = await doDownload()
-  if (result.status === 401) {
-    // Токен истёк — любой api-запрос обновит его через interceptor
-    await api.get('/inventory/my-assets').catch(() => {})
+  // Токен истёк — обновляем и качаем ещё раз
+  if (result.status === 401 && await account.refresh().catch(() => false)) {
     result = await doDownload()
   }
   if (result.status !== 200) {

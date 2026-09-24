@@ -1,10 +1,10 @@
 import { Feather } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
-import { useFocusEffect, useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useRouter } from 'expo-router'
+import { useEffect, useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { roleLabel, useAccountUser } from '../constants/account'
 import { Colors } from '../constants/colors'
 import AssetsView from '../components/onec/AssetsView'
 import MyAssetsView from '../components/onec/MyAssetsView'
@@ -28,13 +28,6 @@ const TABS: {
   { key: 'lookup',    icon: 'search',    label: 'Поиск', roles: ['admin', 'lead'] },
 ]
 
-const ROLE_LABELS: Record<string, string> = {
-  admin:   'Администратор',
-  lead:    'Руководство',
-  curator: 'Куратор',
-  user:    'Сотрудник',
-}
-
 // «чт, 3 июля» → «Чт, 3 июля»
 const dateLabel = () => {
   const s = new Date().toLocaleDateString('ru-RU', {
@@ -53,20 +46,16 @@ const initials = (name: string) =>
 
 export default function SessionsScreen() {
   const [tab,         setTab]         = useState<Tab>('inventory')
-  const [scannerName, setScannerName] = useState('')
-  const [role,        setRole]        = useState('')
+  const user        = useAccountUser()
+  const scannerName = user?.name ?? ''
+  const role        = user?.role ?? ''
   const insets = useSafeAreaInsets()
   const router = useRouter()
 
-  useFocusEffect(useCallback(() => {
-    AsyncStorage.multiGet(['scannerName', 'authRole']).then(pairs => {
-      setScannerName(pairs[0][1] || '')
-      const r = pairs[1][1] || ''
-      setRole(r)
-      // Роли без сканерных вкладок сразу попадают в «Моё оборудование»
-      if (r && r !== 'admin' && r !== 'lead') setTab('my')
-    })
-  }, []))
+  // Роли без сканерных вкладок сразу попадают в «Моё оборудование»
+  useEffect(() => {
+    if (role && role !== 'admin' && role !== 'lead') setTab('my')
+  }, [role])
 
   const visibleTabs = TABS.filter(t => !t.roles || t.roles.includes(role))
 
@@ -88,7 +77,7 @@ export default function SessionsScreen() {
             <View style={styles.subRow}>
               {!!role && <View style={styles.roleDot} />}
               <Text style={styles.subText} numberOfLines={1}>
-                {[ROLE_LABELS[role] ?? (role || null), dateLabel()]
+                {[role ? roleLabel(role) : null, dateLabel()]
                   .filter(Boolean)
                   .join(' · ')}
               </Text>

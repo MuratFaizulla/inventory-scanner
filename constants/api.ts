@@ -1,47 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
+// HTTP-клиент бэкенда. Кто вошёл, какой у него токен и на каком он сервере —
+// дело учётной записи (constants/account): она подключается через setAuth
+// и задаёт адрес через setApiHost. Здесь — только запросы.
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { Platform } from 'react-native'
-
-// Кэш хоста в памяти — заполняется при старте и при смене хоста
-let cachedHost = ''
-
-// Кэш токенов в памяти — синхронный доступ из interceptor'ов
-let accessToken = ''
-let refreshToken = ''
-
-// Вызвать один раз при старте в _layout.tsx
-export const initApiHost = async () => {
-  const [host, access, refresh] = await AsyncStorage.multiGet([
-    'apiHost', 'accessToken', 'refreshToken',
-  ])
-  cachedHost   = host[1]?.trim() || ''
-  accessToken  = access[1] || ''
-  refreshToken = refresh[1] || ''
-}
-
-// Обновить хост (вызывается после сохранения в LoginScreen)
-export const setApiHost = (host: string) => {
-  cachedHost = host.trim()
-}
-
-export const setTokens = async (access: string, refresh: string) => {
-  accessToken  = access
-  refreshToken = refresh
-  await AsyncStorage.multiSet([
-    ['accessToken',  access],
-    ['refreshToken', refresh],
-  ])
-}
-
-export const clearTokens = async () => {
-  accessToken  = ''
-  refreshToken = ''
-  await AsyncStorage.multiRemove(['accessToken', 'refreshToken'])
-}
-
-export const hasTokens = () => !!accessToken
-
-export const getAccessToken = () => accessToken
 
 // Веб-версия по HTTPS (nginx раздаёт /scanner/ и проксирует /api/ на бэкенд):
 // API всегда там же, где страница. Адрес сервера вводить незачем, а запрос
@@ -49,47 +10,39 @@ export const getAccessToken = () => accessToken
 export const sameOrigin =
   Platform.OS === 'web' && typeof window !== 'undefined' && window.location.protocol === 'https:'
 
+// Адрес сервера в памяти — синхронный доступ из interceptor'а
+let cachedHost = ''
+export const setApiHost = (host: string) => { cachedHost = host.trim() }
+
+const hostBaseFor = (host: string) => (sameOrigin ? window.location.origin : `http://${host}`)
+export const apiBaseFor = (host: string) => `${hostBaseFor(host)}/api`
+
 // База без /api — для относительных URL (фото: /api/inventory/type-photo?...)
-export const getHostBase = () => (sameOrigin ? window.location.origin : `http://${cachedHost}`)
+export const getHostBase = () => hostBaseFor(cachedHost)
+export const getApiBase = () => apiBaseFor(cachedHost)
 
-// Синхронный геттер
-export const getApiBase = () => `${getHostBase()}/api`
-
-// Подписка на «сессия истекла» — router в _layout возвращает на логин
-type ExpiredListener = () => void
-let expiredListener: ExpiredListener | null = null
-export const onAuthExpired = (fn: ExpiredListener) => { expiredListener = fn }
+export interface Auth {
+  token(): string
+  /** true — токен обновлён; false — вход истёк; исключение — нет связи */
+  refresh(): Promise<boolean>
+}
+let auth: Auth = { token: () => '', refresh: async () => false }
+export const setAuth = (a: Auth) => { auth = a }
 
 const api = axios.create()
 
-// Синхронный interceptor — никакого async, берёт из кэша
+// Синхронный interceptor — никакого async, всё из памяти
 api.interceptors.request.use(config => {
   config.baseURL = getApiBase()
   config.headers['x-client'] = 'mobile'
-  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`
+  const token = auth.token()
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// 401 → одна попытка refresh (token rotation) → повтор запроса
-let refreshing: Promise<boolean> | null = null
-
-const tryRefresh = async (): Promise<boolean> => {
-  if (!refreshToken) return false
-  try {
-    const res = await axios.post(
-      `${getApiBase()}/auth/refresh`,
-      { refresh_token: refreshToken },
-      { headers: { 'x-client': 'mobile' } },
-    )
-    const d = res.data?.data
-    if (!d?.access_token || !d?.refresh_token) return false
-    await setTokens(d.access_token, d.refresh_token)
-    return true
-  } catch {
-    return false
-  }
-}
-
+// 401 → обновить токен (все параллельные 401 ждут один запрос) → повтор.
+// false — вход истёк: учётная запись его закончила, _layout ведёт на экран входа.
+// Без связи refresh бросает сам — вход цел, запрос считается «нет связи»
 api.interceptors.response.use(
   r => r,
   async (error: AxiosError) => {
@@ -97,40 +50,11 @@ api.interceptors.response.use(
     if (error.response?.status !== 401 || !original || original._retry) {
       throw error
     }
-    // Все параллельные 401 ждут один общий refresh
-    refreshing ??= tryRefresh().finally(() => { refreshing = null })
-    const ok = await refreshing
-    if (!ok) {
-      await clearTokens()
-      expiredListener?.()
-      throw error
-    }
+    if (!(await auth.refresh())) throw error
     original._retry = true
-    original.headers.Authorization = `Bearer ${accessToken}`
+    original.headers.Authorization = `Bearer ${auth.token()}`
     return api.request(original)
   },
 )
-
-// Вход: POST /api/auth — сохраняет токены, возвращает user
-export const login = async (username: string, password: string) => {
-  const res = await axios.post(
-    `${getApiBase()}/auth`,
-    { username, password },
-    { headers: { 'x-client': 'mobile' } },
-  )
-  const d = res.data?.data
-  if (!d?.access_token || !d?.refresh_token) {
-    throw new Error('Сервер не вернул токены — обновите бэкенд')
-  }
-  await setTokens(d.access_token, d.refresh_token)
-  return d.user as { username: string; displayName?: string; role: string }
-}
-
-export const logout = async () => {
-  try {
-    await api.post('/auth/logout', { refresh_token: refreshToken })
-  } catch { /* сеть могла отвалиться — токены чистим в любом случае */ }
-  await clearTokens()
-}
 
 export default api

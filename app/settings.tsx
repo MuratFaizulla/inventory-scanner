@@ -1,7 +1,6 @@
 // app/settings.tsx — страница настроек (открывается с шестерёнки)
 
 import { Feather } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import axios from 'axios'
 import Constants from 'expo-constants'
 import { useRouter } from 'expo-router'
@@ -11,7 +10,8 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { clearTokens, logout, sameOrigin, setApiHost } from '../constants/api'
+import { account, roleLabel, useAccountUser } from '../constants/account'
+import { sameOrigin } from '../constants/api'
 import { acts } from '../constants/act'
 import { goBack } from '../constants/nav'
 import { confirmDialog, notify } from '../constants/dialog'
@@ -20,13 +20,6 @@ import { errorText } from '../constants/errorText'
 import { Colors } from '../constants/colors'
 import SyncView from '../components/onec/SyncView'
 
-const ROLE_LABELS: Record<string, string> = {
-  admin:   'Администратор',
-  lead:    'Руководство',
-  curator: 'Куратор',
-  user:    'Пользователь',
-}
-
 const PLATFORM_LABEL =
   Platform.OS === 'web' ? 'Веб (браузер)'
   : Platform.OS === 'android' ? 'Android'
@@ -34,33 +27,21 @@ const PLATFORM_LABEL =
   : Platform.OS
 
 export default function SettingsScreen() {
-  const [host,      setHost]      = useState('')
-  const [origHost,  setOrigHost]  = useState('')
-  const [username,  setUsername]  = useState('')
-  const [name,      setName]      = useState('')
-  const [role,      setRole]      = useState('')
+  const user     = useAccountUser()
+  const origHost = account.saved().host
+  const [host,      setHost]      = useState(origHost)
   const [saving,    setSaving]    = useState(false)
   const [exporting, setExporting] = useState(false)
   const [syncOpen,  setSyncOpen]  = useState(false)
-  const [remembered, setRemembered] = useState(false)
+  const [remembered, setRemembered] = useState(() => account.saved().remember)
   const [pinging,   setPinging]   = useState(false)
   const [ping,      setPing]      = useState<{ ok: boolean; ms?: number } | null>(null)
   const router = useRouter()
   const insets = useSafeAreaInsets()
 
+  // Сразу показываем статус сервера, не дожидаясь нажатия кнопки
   useEffect(() => {
-    AsyncStorage.multiGet(['apiHost', 'authUsername', 'scannerName', 'authRole', 'rememberMe'])
-      .then(pairs => {
-        const v = Object.fromEntries(pairs.map(([k, val]) => [k, val ?? '']))
-        setHost(v.apiHost)
-        setOrigHost(v.apiHost)
-        setUsername(v.authUsername)
-        setName(v.scannerName)
-        setRole(v.authRole)
-        setRemembered(v.rememberMe === '1')
-        // Сразу показываем статус сервера, не дожидаясь нажатия кнопки
-        if (v.apiHost) pingHost(v.apiHost)
-      })
+    if (origHost) pingHost(origHost)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -69,18 +50,14 @@ export default function SettingsScreen() {
   const handleSave = async () => {
     const trimmed = host.trim()
     if (!trimmed || saving) return
-    setSaving(true)
-    await AsyncStorage.setItem('apiHost', trimmed)
-    setApiHost(trimmed)
-    if (hostChanged) {
-      // Токены выданы старым сервером — на новом они не подойдут
-      await clearTokens()
-      setSaving(false)
-      router.replace('/')
+    if (!hostChanged) {
+      notify('Сохранено', 'Настройки применены')
       return
     }
-    setSaving(false)
-    notify('Сохранено', 'Настройки применены')
+    setSaving(true)
+    // Токены выданы старым сервером — на новом они не подойдут: вход
+    // заканчивается, на экран входа ведёт _layout
+    await account.changeServer(trimmed)
   }
 
   // Проверка связи: публичный эндпоинт, без авторизации — тестирует адрес из поля
@@ -147,7 +124,7 @@ export default function SettingsScreen() {
       { destructive: true },
     )
     if (!ok) return
-    await AsyncStorage.multiSet([['rememberMe', ''], ['savedPassword', '']])
+    await account.forgetPassword()
     setRemembered(false)
     notify('Готово', 'Сохранённый логин и пароль удалены')
   }
@@ -163,9 +140,7 @@ export default function SettingsScreen() {
       { destructive: true },
     )
     if (!ok) return
-    await logout()
-    await AsyncStorage.multiRemove(['scannerName', 'authRole'])
-    router.replace('/')
+    await account.signOut()   // на экран входа ведёт _layout
   }
 
   return (
@@ -191,9 +166,9 @@ export default function SettingsScreen() {
               <Feather name="user" size={18} color={Colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.accountName}>{name || username || '—'}</Text>
+              <Text style={styles.accountName}>{user?.name || '—'}</Text>
               <Text style={styles.accountSub}>
-                {username}{role ? ` · ${ROLE_LABELS[role] ?? role}` : ''}
+                {user?.login}{user?.role ? ` · ${roleLabel(user.role)}` : ''}
               </Text>
             </View>
           </View>
@@ -295,7 +270,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Синхронизация 1С — только admin */}
-        {role === 'admin' && (
+        {user?.role === 'admin' && (
           <>
             <Text style={styles.sectionTitle}>Администрирование</Text>
             <TouchableOpacity
