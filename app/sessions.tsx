@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { acts } from '../constants/act'
 import { roleLabel, useAccountUser } from '../constants/account'
 import { Colors } from '../constants/colors'
 import AssetsView from '../components/onec/AssetsView'
@@ -14,14 +15,16 @@ import InventoryTab from '../components/sessions/InventoryTab'
 import LookupTab from '../components/sessions/LookupTab'
 import type { Tab } from '../components/sessions/types'
 
-// Разделы; «Синхронизация 1С» живёт в Настройках (шестерёнка)
+// Разделы; «Синхронизация 1С» живёт в Настройках (шестерёнка).
+// «Акты» — у администратора и у тех, кого он добавил в акт участником: роль
+// тут не решает, решает, есть ли у человека акты (см. hasActs ниже).
 const TABS: {
   key: Tab
   icon: keyof typeof Feather.glyphMap
   label: string
   roles?: string[]
 }[] = [
-  { key: 'inventory', icon: 'clipboard', label: 'Акты',  roles: ['admin', 'lead'] },
+  { key: 'inventory', icon: 'clipboard', label: 'Акты' },
   { key: 'types',     icon: 'grid',      label: 'Виды',  roles: ['admin'] },
   { key: 'my',        icon: 'package',   label: 'Моё' },
   { key: 'assets',    icon: 'archive',   label: 'ОС',    roles: ['admin'] },
@@ -52,12 +55,26 @@ export default function SessionsScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
 
-  // Роли без сканерных вкладок сразу попадают в «Моё оборудование»
+  // Участник акта — сотрудник с любой ролью, которого админ позвал в акт.
+  // Сервер отдаёт ему только его акты; без связи — сохранённый список.
+  const [hasActs, setHasActs] = useState(false)
   useEffect(() => {
-    if (role && role !== 'admin' && role !== 'lead') setTab('my')
+    if (!role || role === 'admin') return
+    let alive = true
+    acts.list()
+      .then(list => { if (alive) setHasActs(list.length > 0) })
+      .catch(() => { /* нет актов или нет связи — вкладки нет */ })
+    return () => { alive = false }
   }, [role])
 
-  const visibleTabs = TABS.filter(t => !t.roles || t.roles.includes(role))
+  // Не админ сначала попадает в «Моё оборудование»; позвали в акт — в «Акты»
+  useEffect(() => {
+    if (role && role !== 'admin') setTab(hasActs ? 'inventory' : 'my')
+  }, [role, hasActs])
+
+  const visibleTabs = TABS.filter(t => t.key === 'inventory'
+    ? role === 'admin' || hasActs
+    : !t.roles || t.roles.includes(role))
 
   return (
     <View style={styles.container}>
@@ -93,7 +110,7 @@ export default function SessionsScreen() {
 
       {/* ── Контент ── */}
       <View style={{ flex: 1 }}>
-        {tab === 'inventory' && <InventoryTab scannerName={scannerName} />}
+        {tab === 'inventory' && <InventoryTab scannerName={scannerName} canManage={role === 'admin'} />}
         {tab === 'lookup'    && <LookupTab />}
         {tab === 'my'        && <MyAssetsView />}
         {tab === 'assets'    && <AssetsView />}

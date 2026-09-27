@@ -21,7 +21,10 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string }> 
   cancelled:   { label: 'Отменён',    color: Colors.text3,   bg: Colors.bg3 },
 }
 
-export default function InventoryTab({ scannerName }: { scannerName: string }) {
+// Управляет актами только администратор: создать, запустить, пауза,
+// возобновить, завершить, отменить. Участник — сотрудник, которого админ
+// позвал в акт, — видит свои акты, сканирует и смотрит детали.
+export default function InventoryTab({ scannerName, canManage }: { scannerName: string; canManage: boolean }) {
   const [sessions,   setSessions]   = useState<ActSummary[]>([])
   const [loading,    setLoading]    = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -134,7 +137,10 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
 
         {/* Действия по статусу */}
         <View style={s.btnRow}>
-          {item.status === 'draft' && (
+          {item.status === 'draft' && !canManage && (
+            <Text style={s.emptySub}>Ждёт запуска администратором</Text>
+          )}
+          {item.status === 'draft' && canManage && (
             <>
               <TouchableOpacity
                 style={[s.scanBtn, busy && { opacity: 0.5 }]}
@@ -173,27 +179,31 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
               >
                 <Text style={s.scanBtnText}>📷 Сканировать</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={s.moreBtn}
-                disabled={busy}
-                onPress={() => setMenuFor(item)}
-              >
-                {busy
-                  ? <ActivityIndicator size="small" color={Colors.text2} />
-                  : <Feather name="more-vertical" size={16} color={Colors.text2} />}
-              </TouchableOpacity>
+              {canManage && (
+                <TouchableOpacity
+                  style={s.moreBtn}
+                  disabled={busy}
+                  onPress={() => setMenuFor(item)}
+                >
+                  {busy
+                    ? <ActivityIndicator size="small" color={Colors.text2} />
+                    : <Feather name="more-vertical" size={16} color={Colors.text2} />}
+                </TouchableOpacity>
+              )}
             </>
           )}
 
           {item.status === 'paused' && (
             <>
-              <TouchableOpacity
-                style={[s.scanBtn, busy && { opacity: 0.5 }]}
-                disabled={busy}
-                onPress={() => doAction(item, 'resume')}
-              >
-                <Text style={s.scanBtnText}>▶ Возобновить</Text>
-              </TouchableOpacity>
+              {canManage && (
+                <TouchableOpacity
+                  style={[s.scanBtn, busy && { opacity: 0.5 }]}
+                  disabled={busy}
+                  onPress={() => doAction(item, 'resume')}
+                >
+                  <Text style={s.scanBtnText}>▶ Возобновить</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={s.detailBtn}
                 onPress={() => router.push({
@@ -233,8 +243,8 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Создать акт */}
-      <View style={styles.topBar}>
+      {/* Создать акт — только администратор */}
+      {canManage && <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.createBtn}
           onPress={() => setCreateOpen(true)}
@@ -243,7 +253,7 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
           <Feather name="plus" size={15} color={Colors.accent2} />
           <Text style={styles.createText}>Создать акт</Text>
         </TouchableOpacity>
-      </View>
+      </View>}
 
       <FlatList
         data={sessions}
@@ -256,7 +266,9 @@ export default function InventoryTab({ scannerName }: { scannerName: string }) {
           <View style={s.empty}>
             <Text style={s.emptyIcon}>📋</Text>
             <Text style={s.emptyText}>Нет актов инвентаризации</Text>
-            <Text style={s.emptySub}>Нажмите «Создать акт», чтобы начать</Text>
+            <Text style={s.emptySub}>
+              {canManage ? 'Нажмите «Создать акт», чтобы начать' : 'Вас пока не добавили ни в один акт'}
+            </Text>
           </View>
         ) : null}
         renderItem={renderItem}
